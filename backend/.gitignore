@@ -1,0 +1,17 @@
+# 의존성
+node_modules/
+
+# 환경 변수 (보안)
+.env
+
+# 로그 파일
+*.log
+npm-debug.log*
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# IDE 설정
+.vscode/
+.idea/

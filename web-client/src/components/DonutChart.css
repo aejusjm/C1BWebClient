@@ -1,0 +1,18 @@
+/* 도넛 차트 래퍼 */
+.donut-chart-wrapper {
+  width: 100%;
+  max-width: 210px;
+  margin: 0 auto;
+  padding: 15px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px; /* 최소 높이로 레이아웃 안정화 */
+  transition: opacity 0.2s ease; /* 부드러운 전환 효과 */
+}
+
+.donut-chart-wrapper canvas {
+  max-height: 170px;
+  transition: opacity 0.2s ease; /* 캔버스 전환 효과 */
+}

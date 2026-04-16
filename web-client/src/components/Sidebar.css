@@ -1,0 +1,234 @@
+/* 사이드바 컨테이너 */
+.sidebar {
+  width: 250px;
+  background-color: white;
+  border-right: 1px solid #e0e0e0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* 로고 영역 */
+.logo-section {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-section:hover {
+  background-color: #f5f5f5;
+}
+
+.logo-image {
+  max-width: 100%;
+  height: auto;
+  max-height: 80px;
+  object-fit: contain;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 사용자 정보 영역 */
+.user-info {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+.user-date {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+/* 로그아웃 버튼 */
+.logout-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(239, 83, 80, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(239, 83, 80, 0.4);
+}
+
+/* 메뉴 네비게이션 */
+.menu-nav {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.menu-list {
+  list-style: none;
+}
+
+.menu-list > li {
+  padding: 14px 20px;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-weight: 500;
+}
+
+.menu-list > li > .menu-title {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.menu-list > li:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-list > li.active {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+/* 메뉴 아이콘 */
+.menu-icon {
+  font-size: 18px;
+  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 서브메뉴 */
+.submenu {
+  list-style: none;
+  margin-top: 10px;
+  padding-left: 28px;
+  width: 100%;
+}
+
+/* 설정 메뉴 (클릭 불가) */
+.menu-parent {
+  cursor: default;
+}
+
+.menu-parent .menu-title {
+  cursor: default;
+  pointer-events: none;
+}
+
+.submenu li {
+  padding: 8px 0;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-weight: 400;
+  transition: all 0.2s;
+}
+
+.submenu li:hover {
+  color: #1976d2;
+  padding-left: 5px;
+}
+
+.submenu li.active {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+/* 서브메뉴 아이콘 */
+.submenu-icon {
+  font-size: 15px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 사이드바 하단 */
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.footer-box {
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.subscribe-btn {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(30, 136, 229, 0.35);
+}
+
+.subscribe-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(30, 136, 229, 0.45);
+}
+
+.subscribe-icon {
+  font-size: 18px;
+}
+
+/* 애니메이션 */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}

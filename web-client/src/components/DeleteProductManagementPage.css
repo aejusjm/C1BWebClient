@@ -1,0 +1,359 @@
+/* 삭제상품관리 페이지 */
+.delete-product-management-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+/* 페이지 헤더 */
+.delete-product-management-page-header {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* 테이블 컨테이너 */
+.delete-product-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.table-header {
+  padding: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.items-per-page label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.items-per-page select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.items-per-page select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.items-per-page select:hover {
+  border-color: #1976d2;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* 삭제상품 테이블 */
+.delete-product-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.delete-product-table thead {
+  background: #f5f5f5;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.delete-product-table th {
+  padding: 12px 10px;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* 컬럼 너비 조정 */
+.delete-product-table th:nth-child(1) { width: 40px; }  /* 순번 */
+.delete-product-table th:nth-child(2) { width: 70px; }  /* 사용자 */
+.delete-product-table th:nth-child(3) { width: 90px; }  /* 삭제유형 */
+.delete-product-table th:nth-child(4) { width: 100px; } /* 삭제사유 */
+.delete-product-table th:nth-child(5) { width: 70px; }  /* 상품이미지 */
+.delete-product-table th:nth-child(6) { width: auto; }  /* 상품명 (남은 공간) */
+.delete-product-table th:nth-child(7) { width: 80px; }  /* 삭제여부 */
+.delete-product-table th:nth-child(8) { width: 130px; } /* 삭제요청일 */
+.delete-product-table th:nth-child(9) { width: 130px; } /* 삭제일자 */
+.delete-product-table th:nth-child(10) { width: 100px; } /* 전체삭제요청 */
+
+.delete-product-table td {
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  font-size: 12px;
+  color: #555;
+}
+
+.delete-product-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.delete-product-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.no-data {
+  padding: 40px !important;
+  text-align: center !important;
+  color: #999;
+  font-size: 14px !important;
+}
+
+/* 상품 이미지 */
+.product-thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.product-thumbnail:hover {
+  transform: scale(1.1);
+}
+
+/* 상품명 셀 */
+.product-name-cell {
+  text-align: left !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 15px !important;
+}
+
+/* 삭제사유 셀 */
+.reason-cell {
+  text-align: center !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 상태 뱃지 */
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.pending {
+  background: #FFF3E0;
+  color: #E65100;
+}
+
+.status-badge.deleted {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+/* 삭제유형 뱃지 */
+.del-type-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.del-type-badge.del-type-all {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+.del-type-badge.del-type-immediate {
+  background: #FCE4EC;
+  color: #C2185B;
+}
+
+/* 전체삭제 버튼 */
+.delete-all-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+  white-space: nowrap;
+}
+
+.delete-all-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+}
+
+/* 이미지 확대 모달 */
+.image-zoom-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  cursor: pointer;
+}
+
+.image-zoom-content {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  cursor: default;
+}
+
+.image-zoom-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 20001;
+}
+
+.image-zoom-close:hover {
+  background: white;
+  transform: scale(1.1);
+}
+
+/* 페이징 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #1976d2;
+  color: #1976d2;
+}
+
+.page-btn.active {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+  font-weight: 600;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .delete-product-management-page {
+    padding: 10px;
+  }
+
+  .delete-product-management-page-header {
+    padding: 15px 20px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .delete-all-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,107 @@
+/* 상품통계 컨테이너 */
+.product-stats-container {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 통계 제목 */
+.stats-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-title::before {
+  content: "📈";
+  font-size: 20px;
+}
+
+/* 통계 그리드 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 통계 카드 */
+.stats-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.stats-card-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* 통계 숫자 */
+.stats-numbers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-main-number {
+  font-size: 42px;
+  font-weight: bold;
+  color: #1976d2;
+}
+
+.stats-sub-numbers {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stats-sub-numbers span {
+  margin: 0 2px;
+}
+
+/* 로딩 상태 */
+.stats-loading {
+  font-size: 14px;
+  color: #999;
+  padding: 20px 0;
+}
+
+/* 하단 정보 */
+.stats-footer {
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.stats-footer p {
+  font-size: 11px;
+  color: #999;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

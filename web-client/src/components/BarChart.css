@@ -1,0 +1,12 @@
+/* 막대 차트 래퍼 */
+.bar-chart-wrapper {
+  width: 100%;
+  padding: 8px 0;
+  min-height: 240px; /* 최소 높이로 레이아웃 안정화 */
+  transition: opacity 0.2s ease; /* 부드러운 전환 효과 */
+}
+
+.bar-chart-wrapper canvas {
+  max-height: 240px;
+  transition: opacity 0.2s ease; /* 캔버스 전환 효과 */
+}

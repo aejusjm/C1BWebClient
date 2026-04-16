@@ -1,0 +1,542 @@
+/* 사용자별 매출 통계 페이지 */
+.user-sales-stats-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+/* 페이지 헤더 */
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 검색 조건 섹션 - 대시보드 스타일 */
+.search-section {
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+/* 날짜 필터 버튼 */
+.date-filters {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.date-filters button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+/* 오늘/어제 그룹 - 연한 블루 */
+.date-filters button:nth-child(1),
+.date-filters button:nth-child(2) {
+  background: #e3f2fd;
+  border-color: #90caf9;
+}
+
+/* 이번주/지난주 그룹 - 연한 그린 */
+.date-filters button:nth-child(3),
+.date-filters button:nth-child(4) {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+}
+
+/* 이번달/지난달 그룹 - 연한 퍼플 */
+.date-filters button:nth-child(5),
+.date-filters button:nth-child(6) {
+  background: #f3e5f5;
+  border-color: #ce93d8;
+}
+
+/* 기간선택 버튼 - 연한 앰버 */
+.date-filters button:nth-child(7) {
+  background: #fff3e0;
+  border-color: #ffb74d;
+}
+
+.date-filters button:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+.date-filters button.active {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+  font-weight: 600;
+}
+
+/* 선택된 날짜 범위 표시 */
+.selected-date-range {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 2px solid #1976d2;
+  border-radius: 6px;
+  color: #0d47a1;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.filter-divider {
+  width: 2px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #dee2e6 20%, #dee2e6 80%, transparent);
+}
+
+/* 필터 섹션 */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f0f7ff;
+  border-radius: 6px;
+  border: 2px solid #d0e7ff;
+  flex-shrink: 0;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1976d2;
+  min-width: auto;
+  white-space: nowrap;
+}
+
+/* 마켓 체크박스 */
+.market-checkboxes {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.checkbox-text {
+  cursor: pointer;
+}
+
+.checkbox-label:hover .checkbox-text {
+  color: #1976d2;
+}
+
+/* 사용자 검색 그룹 */
+.user-sales-stats-page .search-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.user-sales-stats-page .search-group .filter-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* 사용자 검색 입력 */
+.user-sales-stats-page .user-search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 120px;
+  transition: all 0.2s;
+}
+
+.user-sales-stats-page .user-search-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+/* 검색 버튼 */
+.user-sales-stats-page .search-btn {
+  padding: 8px 16px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.user-sales-stats-page .search-btn:hover {
+  background: #1565c0;
+}
+
+/* 통계 테이블 컨테이너 */
+.stats-table-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+/* 통계 테이블 */
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.stats-table thead {
+  background: #f8f9fa;
+}
+
+/* 1단 헤더 */
+.header-row-1 th {
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #333;
+  border: 1px solid #dee2e6;
+  background: #e9ecef;
+}
+
+/* 2단 헤더 */
+.header-row-2 th {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #495057;
+  border: 1px solid #dee2e6;
+  background: #f8f9fa;
+  font-size: 13px;
+}
+
+/* 헤더 색상 구분 - 연하고 세련된 색상 */
+/* 기본 헤더 (순번, 사용자ID, 사용자명) */
+.stats-table th.header-basic {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+}
+
+/* 1단 헤더 - 스토어수 (연한 퍼플) */
+.stats-table th.header-store-count {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  font-weight: 700;
+}
+
+/* 1단 헤더 - 주문수 (연한 블루) */
+.stats-table th.header-order-count {
+  background: #e3f2fd;
+  color: #1976d2;
+  font-weight: 700;
+}
+
+/* 1단 헤더 - 매출 (연한 앰버) */
+.stats-table th.header-sales {
+  background: #fff3e0;
+  color: #f57c00;
+  font-weight: 700;
+}
+
+/* 2단 헤더 - 스마트스토어와 쿠팡 동일 색상 */
+.stats-table th.header-smartstore,
+.stats-table th.header-coupang {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* 총계 헤더 - 연한 골드 */
+.stats-table th.header-total {
+  background: #fff9e6;
+  color: #f57c00;
+  font-weight: 700;
+}
+
+/* 정렬 가능한 헤더 */
+.stats-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.stats-table th.sortable:hover {
+  background: #dee2e6;
+}
+
+/* 테이블 바디 */
+.stats-table tbody tr {
+  transition: background 0.2s;
+}
+
+.stats-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.stats-table tbody td {
+  padding: 12px 8px;
+  border: 1px solid #dee2e6;
+  color: #333;
+}
+
+/* 텍스트 정렬 */
+.stats-table td.center {
+  text-align: center;
+}
+
+.stats-table td.right {
+  text-align: right;
+}
+
+/* 데이터 셀 색상 구분 - 연하고 깔끔한 색상 */
+/* 스토어 수 셀 (연한 퍼플) */
+.stats-table td.cell-store-count {
+  background: #faf5ff;
+  color: #7b1fa2;
+  font-weight: 500;
+}
+
+/* 주문수 셀 (연한 블루) */
+.stats-table td.cell-order-count {
+  background: #f0f8ff;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+/* 매출 셀 (연한 앰버) */
+.stats-table td.cell-sales {
+  background: #fffbf5;
+  color: #f57c00;
+  font-weight: 500;
+}
+
+/* 하이라이트 (총계 컬럼) - 연한 골드 */
+.stats-table td.highlight {
+  background: #fff9e6;
+  font-weight: 700;
+  color: #f57c00;
+}
+
+/* 로딩 및 빈 데이터 메시지 */
+.loading-message,
+.no-data-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 16px;
+}
+
+/* 날짜 선택 모달 */
+.date-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.date-modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 400px;
+  max-width: 90%;
+  animation: zoomIn 0.2s ease-out;
+}
+
+.date-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.date-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.date-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.date-modal-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.date-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.date-input-modal {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.date-input-modal:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.date-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.date-modal-cancel,
+.date-modal-apply {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-modal-cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.date-modal-cancel:hover {
+  background: #e0e0e0;
+}
+
+.date-modal-apply {
+  background: #1976d2;
+  color: white;
+}
+
+.date-modal-apply:hover {
+  background: #1565c0;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
