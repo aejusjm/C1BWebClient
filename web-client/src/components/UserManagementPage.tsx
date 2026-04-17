@@ -124,6 +124,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   // 마켓연동 모달 상태
   const [showMarketModal, setShowMarketModal] = useState(false)
   const [marketUserId, setMarketUserId] = useState('')
+  const [marketUserName, setMarketUserName] = useState('')
   const [activeTab, setActiveTab] = useState<'smartstore' | 'coupang'>('smartstore')
   const [smartStores, setSmartStores] = useState<StoreInfo[]>([
     { biz_idx: 1, storeName: '', id: '', storeId: '', password: '', appId: '', appSecret: '', useYn: 'Y' },
@@ -313,7 +314,9 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
 
   // 마켓연동 버튼 클릭
   const handleMarketConnection = async (userId: string) => {
+    const user = users.find(u => u.user_id === userId)
     setMarketUserId(userId)
+    setMarketUserName(user?.user_name || '')
     setActiveTab('smartstore')
     await loadMarketData(userId)
     setShowMarketModal(true)
@@ -1445,7 +1448,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
         <div className="modal-overlay">
           <div className="modal-content market-modal">
             <div className="modal-header">
-              <h3 className="modal-title">🔗 마켓연동 관리 - {marketUserId}</h3>
+              <h3 className="modal-title">🔗 마켓연동 관리 - {marketUserName}({marketUserId})</h3>
               <button className="modal-close" onClick={() => setShowMarketModal(false)}>×</button>
             </div>
 
