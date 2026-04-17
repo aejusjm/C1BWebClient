@@ -718,8 +718,15 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   // 수정 버튼 클릭
   const handleEditClick = (user: User) => {
     setIsNewUser(false)
-    setSelectedUser(user)
-    setEditData(user)
+    // users 배열에서 최신 사용자 정보를 찾아서 설정 (깊은 복사)
+    const latestUser = users.find(u => u.user_id === user.user_id)
+    if (latestUser) {
+      setSelectedUser({ ...latestUser })
+      setEditData({ ...latestUser })
+    } else {
+      setSelectedUser({ ...user })
+      setEditData({ ...user })
+    }
     setShowEditModal(true)
   }
 
@@ -808,9 +815,12 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
         const result = await response.json()
         
         if (result.success) {
-          await showAlert('사용자가 등록되었습니다.')
+          // 모달 닫기
           closeEditModal()
-          loadUsers(searchParams)
+          // 로딩 상태 유지하면서 데이터 새로고침
+          await loadUsers(searchParams)
+          // 성공 메시지 표시
+          await showAlert('사용자가 등록되었습니다.')
         } else {
           await showAlert(result.message || '등록 중 오류가 발생했습니다.')
         }
@@ -835,9 +845,12 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
         console.log('사용자 수정 응답 결과:', result)
         
         if (result.success) {
-          await showAlert('사용자 정보가 수정되었습니다.')
+          // 모달 닫기
           closeEditModal()
-          loadUsers(searchParams)
+          // 로딩 상태 유지하면서 데이터 새로고침
+          await loadUsers(searchParams)
+          // 성공 메시지 표시
+          await showAlert('사용자 정보가 수정되었습니다.')
         } else {
           await showAlert(result.message || '수정 중 오류가 발생했습니다.')
         }

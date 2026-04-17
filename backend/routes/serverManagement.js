@@ -12,13 +12,14 @@ router.get('/', async (req, res) => {
         SELECT 
           server_id,
           server_ip,
+          server_port,
           server_name,
           server_type,
           use_yn,
           input_date,
           update_date
         FROM tb_server_info
-        ORDER BY server_id
+        ORDER BY server_ip
       `);
     
     res.json({
@@ -47,6 +48,7 @@ router.get('/:serverId', async (req, res) => {
         SELECT 
           server_id,
           server_ip,
+          server_port,
           server_name,
           server_type,
           use_yn,
@@ -83,6 +85,7 @@ router.post('/', async (req, res) => {
     const {
       server_id,
       server_ip,
+      server_port,
       server_name,
       server_type,
       use_yn
@@ -113,12 +116,13 @@ router.post('/', async (req, res) => {
     await pool.request()
       .input('server_id', sql.NVarChar, server_id)
       .input('server_ip', sql.NVarChar, server_ip)
+      .input('server_port', sql.NVarChar, server_port || '')
       .input('server_name', sql.NVarChar, server_name)
       .input('server_type', sql.NVarChar, server_type || '')
       .input('use_yn', sql.NVarChar, use_yn || 'Y')
       .query(`
-        INSERT INTO tb_server_info (server_id, server_ip, server_name, server_type, use_yn, input_date)
-        VALUES (@server_id, @server_ip, @server_name, @server_type, @use_yn, GETDATE())
+        INSERT INTO tb_server_info (server_id, server_ip, server_port, server_name, server_type, use_yn, input_date)
+        VALUES (@server_id, @server_ip, @server_port, @server_name, @server_type, @use_yn, GETDATE())
       `);
     
     res.json({
@@ -141,6 +145,7 @@ router.put('/:serverId', async (req, res) => {
     const { serverId } = req.params;
     const {
       server_ip,
+      server_port,
       server_name,
       server_type,
       use_yn
@@ -159,6 +164,7 @@ router.put('/:serverId', async (req, res) => {
     await pool.request()
       .input('serverId', sql.NVarChar, serverId)
       .input('server_ip', sql.NVarChar, server_ip)
+      .input('server_port', sql.NVarChar, server_port || '')
       .input('server_name', sql.NVarChar, server_name)
       .input('server_type', sql.NVarChar, server_type || '')
       .input('use_yn', sql.NVarChar, use_yn || 'Y')
@@ -166,6 +172,7 @@ router.put('/:serverId', async (req, res) => {
         UPDATE tb_server_info
         SET 
           server_ip = @server_ip,
+          server_port = @server_port,
           server_name = @server_name,
           server_type = @server_type,
           use_yn = @use_yn,

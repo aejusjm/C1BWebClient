@@ -863,6 +863,14 @@ router.post('/customs-request', async (req, res) => {
       });
     }
     
+    // title 값에 따라 job_type 결정
+    let job_type = '통관번호'; // 기본값
+    if (title === '아직 못받음') {
+      job_type = '미입력';
+    } else if (title === '잘못된 통관번호 받음') {
+      job_type = '통관번호오류';
+    }
+    
     const pool = await getConnection();
     
     // SQL Server의 NEWID() 함수를 직접 사용하여 GUID 생성
@@ -870,7 +878,7 @@ router.post('/customs-request', async (req, res) => {
       .input('user_id', sql.NVarChar, user_id)
       .input('order_id', sql.NVarChar, order_id)
       .input('tel_no', sql.NVarChar, tel_no || '')
-      .input('job_type', sql.NVarChar, '통관번호')
+      .input('job_type', sql.NVarChar, job_type)
       .input('title', sql.NVarChar, title || '통관번호요청')
       .input('tpl_code', sql.NVarChar, 'TY_4452')
       .query(`

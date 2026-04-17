@@ -20,6 +20,7 @@ const SERVER_TYPE_OPTIONS = [
 interface Server {
   server_id: string
   server_ip: string
+  server_port: string
   server_name: string
   server_type: string
   use_yn: string
@@ -35,6 +36,15 @@ function ServerManagementPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [serverTypeSelectValue, setServerTypeSelectValue] = useState('')
+  
+  // 정렬 상태
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Server | null
+    direction: 'asc' | 'desc' | null
+  }>({
+    key: null,
+    direction: null
+  })
 
   useEffect(() => {
     loadServers()
@@ -87,6 +97,7 @@ function ServerManagementPage() {
     setSelectedServer({
       server_id: '',
       server_ip: '',
+      server_port: '',
       server_name: '',
       server_type: '',
       use_yn: 'Y',
@@ -201,6 +212,56 @@ function ServerManagementPage() {
     return CUSTOM_SERVER_TYPE_VALUE
   }
 
+  // 정렬 처리
+  const handleSort = (key: keyof Server) => {
+    let direction: 'asc' | 'desc' | null = 'desc'
+    
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'desc') {
+        direction = 'asc'
+      } else if (sortConfig.direction === 'asc') {
+        direction = null
+      }
+    }
+    
+    setSortConfig({ key: direction ? key : null, direction })
+  }
+
+  // 정렬된 서버 목록
+  const sortedServers = [...servers].sort((a, b) => {
+    if (!sortConfig.key || !sortConfig.direction) {
+      return 0
+    }
+
+    const aValue = a[sortConfig.key]
+    const bValue = b[sortConfig.key]
+
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue)
+    }
+
+    return 0
+  })
+
+  // 정렬 아이콘 반환
+  const getSortIcon = (key: keyof Server) => {
+    if (sortConfig.key !== key) {
+      return ' ⇅'
+    }
+    if (sortConfig.direction === 'desc') {
+      return ' ↓'
+    }
+    if (sortConfig.direction === 'asc') {
+      return ' ↑'
+    }
+    return ' ⇅'
+  }
+
   if (loading) {
     return (
       <div className="server-management-page">
@@ -229,11 +290,42 @@ function ServerManagementPage() {
             <thead>
               <tr>
                 <th style={{ width: '60px' }}>순번</th>
-                <th style={{ width: '150px' }}>서버ID</th>
-                <th style={{ width: '150px' }}>서버IP</th>
-                <th style={{ width: '200px' }}>서버명</th>
-                <th style={{ width: '120px' }}>서버타입</th>
-                <th style={{ width: '100px' }}>사용여부</th>
+                <th 
+                  style={{ width: '150px', cursor: 'pointer' }}
+                  onClick={() => handleSort('server_id')}
+                >
+                  서버ID{getSortIcon('server_id')}
+                </th>
+                <th 
+                  style={{ width: '150px', cursor: 'pointer' }}
+                  onClick={() => handleSort('server_ip')}
+                >
+                  서버IP{getSortIcon('server_ip')}
+                </th>
+                <th 
+                  style={{ width: '100px', cursor: 'pointer' }}
+                  onClick={() => handleSort('server_port')}
+                >
+                  포트{getSortIcon('server_port')}
+                </th>
+                <th 
+                  style={{ width: '200px', cursor: 'pointer' }}
+                  onClick={() => handleSort('server_name')}
+                >
+                  서버명{getSortIcon('server_name')}
+                </th>
+                <th 
+                  style={{ width: '120px', cursor: 'pointer' }}
+                  onClick={() => handleSort('server_type')}
+                >
+                  서버타입{getSortIcon('server_type')}
+                </th>
+                <th 
+                  style={{ width: '100px', cursor: 'pointer' }}
+                  onClick={() => handleSort('use_yn')}
+                >
+                  사용여부{getSortIcon('use_yn')}
+                </th>
                 <th style={{ width: '120px' }}>입력일자</th>
                 <th style={{ width: '120px' }}>수정일자</th>
                 <th style={{ width: '80px' }}>수정</th>
@@ -241,12 +333,13 @@ function ServerManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {servers.length > 0 ? (
-                servers.map((server, index) => (
+              {sortedServers.length > 0 ? (
+                sortedServers.map((server, index) => (
                   <tr key={server.server_id}>
                     <td className="text-center">{index + 1}</td>
                     <td>{server.server_id}</td>
                     <td>{server.server_ip}</td>
+                    <td className="text-center">{server.server_port}</td>
                     <td>{server.server_name}</td>
                     <td className="text-center">{server.server_type}</td>
                     <td className="text-center">
@@ -276,7 +369,7 @@ function ServerManagementPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="no-data-message">
+                  <td colSpan={11} className="no-data-message">
                     등록된 서버가 없습니다.
                   </td>
                 </tr>
@@ -320,6 +413,16 @@ function ServerManagementPage() {
                   value={selectedServer.server_ip}
                   onChange={(e) => handleInputChange('server_ip', e.target.value)}
                   placeholder="예: 192.168.0.10"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">포트</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={selectedServer.server_port}
+                  onChange={(e) => handleInputChange('server_port', e.target.value)}
+                  placeholder="예: 3001"
                 />
               </div>
               <div className="form-group">

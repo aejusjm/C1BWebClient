@@ -1135,7 +1135,7 @@ function OrderPage() {
             </div>
             <div className="rerequest-modal-body">
               <div className="rerequest-form-group">
-                <label className="rerequest-label">요청일자</label>
+                <label className="rerequest-label">이전 요청일자</label>
                 <div className="rerequest-date-value">
                   {selectedOrder?.pccc_req_date ? formatDate(selectedOrder.pccc_req_date) : '-'}
                 </div>
