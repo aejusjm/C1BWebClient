@@ -173,6 +173,7 @@ router.get('/orders/:userId', async (req, res) => {
         ON TRY_CAST(RIGHT(A.seller_cd, 7) AS INT) = C.seq 
       LEFT OUTER JOIN tb_good_user D
         ON D.gm_seq = C.seq 
+        AND D.user_id = @userId
       WHERE B.user_id = @userId
       ${dateCondition}
       ${marketCondition}
