@@ -451,21 +451,16 @@ function OrderPage() {
   }
 
   // 통관번호 요청 버튼 클릭
-  const handleCustomsRequestClick = async (_order: Order) => {
-    // 점검 중 메시지 표시
-    await showAlert('점검중입니다.\n불편을 드려 죄송합니다.')
-    return
-    
-    // 기존 로직 (추후 사용 예정)
-    // if (order.pccc_req_date) {
-    //   // 재요청인 경우 모달 표시
-    //   setSelectedOrder(order)
-    //   setRerequestReason('')
-    //   setShowRerequestModal(true)
-    // } else {
-    //   // 최초 요청인 경우 바로 실행
-    //   handleCustomsRequest(order, '통관번호요청')
-    // }
+  const handleCustomsRequestClick = async (order: Order) => {
+    if (order.pccc_req_date) {
+      // 재요청인 경우 모달 표시
+      setSelectedOrder(order)
+      setRerequestReason('')
+      setShowRerequestModal(true)
+    } else {
+      // 최초 요청인 경우 바로 실행
+      handleCustomsRequest(order, '통관번호요청')
+    }
   }
 
   // 통관번호 요청 실행
@@ -480,7 +475,10 @@ function OrderPage() {
           user_id: userInfo.userId,
           order_id: order.order_id,
           tel_no: order.ordrr_tel,
-          title: title
+          title: title,
+          ordrr_name: order.ordrr_name,
+          product_name: order.product_name,
+          pay_date: order.pay_date
         })
       })
       

@@ -34,7 +34,7 @@ router.get('/order-info/:pcccGuid', async (req, res) => {
           A.ordrr_name AS ordrr_name,
           A.ordrr_tel AS ordrr_tel
         FROM tb_order_info A
-        INNER JOIN tb_kakao_mag B
+        INNER JOIN tb_kakao_msg B
           ON A.order_id = B.order_id 
         INNER JOIN tb_user_market_ss C
           ON A.user_id = C.user_id 

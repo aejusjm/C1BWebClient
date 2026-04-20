@@ -853,7 +853,7 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
 // 통관번호 요청 API
 router.post('/customs-request', async (req, res) => {
   try {
-    const { user_id, order_id, tel_no, title } = req.body;
+    const { user_id, order_id, tel_no, title, ordrr_name, product_name, pay_date } = req.body;
     
     console.log('통관번호 요청 - user_id:', user_id, 'order_id:', order_id, 'tel_no:', tel_no, 'title:', title);
     
@@ -864,12 +864,16 @@ router.post('/customs-request', async (req, res) => {
       });
     }
     
-    // title 값에 따라 job_type 결정
-    let job_type = '통관번호'; // 기본값
+    // title 값에 따라 저장할 title과 tpl_code 결정
+    let finalTitle = '통관번호입력요청'; // 기본값 (최초 요청)
+    let tplCode = 'UH_0682'; // 기본값 (최초 요청)
+    
     if (title === '아직 못받음') {
-      job_type = '미입력';
+      finalTitle = '미입력';
+      tplCode = 'UH_0683';
     } else if (title === '잘못된 통관번호 받음') {
-      job_type = '통관번호오류';
+      finalTitle = '통관번호오류';
+      tplCode = 'UH_0684';
     }
     
     const pool = await getConnection();
@@ -879,14 +883,17 @@ router.post('/customs-request', async (req, res) => {
       .input('user_id', sql.NVarChar, user_id)
       .input('order_id', sql.NVarChar, order_id)
       .input('tel_no', sql.NVarChar, tel_no || '')
-      .input('job_type', sql.NVarChar, job_type)
-      .input('title', sql.NVarChar, title || '통관번호요청')
-      .input('tpl_code', sql.NVarChar, 'TY_4452')
+      .input('job_type', sql.NVarChar, '통관번호')
+      .input('title', sql.NVarChar, finalTitle)
+      .input('tpl_code', sql.NVarChar, tplCode)
+      .input('param_1', sql.NVarChar, ordrr_name || '')
+      .input('param_2', sql.NVarChar, product_name || '')
+      .input('param_3', sql.NVarChar, pay_date || '')
       .query(`
-        INSERT INTO tb_kakao_mag
-          (user_id, order_id, tel_no, pccc_guid, job_type, title, tpl_code, input_date)
+        INSERT INTO tb_kakao_msg
+          (user_id, order_id, tel_no, pccc_guid, job_type, title, tpl_code, param_1, param_2, param_3, input_date)
         VALUES
-          (@user_id, @order_id, @tel_no, REPLACE(NEWID(), '-', ''), @job_type, @title, @tpl_code, GETDATE())
+          (@user_id, @order_id, @tel_no, REPLACE(NEWID(), '-', ''), @job_type, @title, @tpl_code, @param_1, @param_2, @param_3, GETDATE())
       `);
     
     // 주문 테이블의 pccc_req_date 업데이트
