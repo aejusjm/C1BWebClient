@@ -70,6 +70,8 @@ router.get('/user-sales', async (req, res) => {
         SELECT 
           U.user_id,
           U.user_name,
+          U.user_type,
+          U.end_date,
           -- 스마트스토어 통계
           (SELECT COUNT(DISTINCT biz_idx) 
            FROM tb_user_market_ss 
@@ -113,6 +115,8 @@ router.get('/user-sales', async (req, res) => {
       SELECT 
         user_id,
         user_name,
+        user_type,
+        end_date,
         ss_store_count,
         ss_order_count,
         ss_sales,
@@ -261,6 +265,94 @@ router.get('/daily-sales/:userId', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '일자별 매출 통계 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
+// 기간 조건: tb_good_user.get_date (한국시간 기준, 사용자별 매출 API와 동일한 프리셋)
+function buildGoodUserDateCondition(dateFilter, startDate, endDate) {
+  if (dateFilter === 'all') {
+    return '';
+  }
+  if (startDate && endDate) {
+    return `AND CONVERT(DATE, a.get_date) >= '${startDate}' AND CONVERT(DATE, a.get_date) <= '${endDate}'`;
+  }
+  switch (dateFilter) {
+    case 'today':
+      return 'AND CONVERT(DATE, a.get_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+    case 'yesterday':
+      return 'AND CONVERT(DATE, a.get_date) = CONVERT(DATE, DATEADD(DAY, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+    case 'thisWeek':
+      return `AND a.get_date >= DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) 
+              AND a.get_date < DATEADD(DAY, 8 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))`;
+    case 'lastWeek':
+      return `AND a.get_date >= DATEADD(DAY, -6 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) 
+              AND a.get_date < DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))`;
+    case 'thisMonth':
+      return 'AND YEAR(a.get_date) = YEAR(DATEADD(HOUR, 9, GETUTCDATE())) AND MONTH(a.get_date) = MONTH(DATEADD(HOUR, 9, GETUTCDATE()))';
+    case 'lastMonth':
+      return 'AND YEAR(a.get_date) = YEAR(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE()))) AND MONTH(a.get_date) = MONTH(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+    default:
+      return 'AND CONVERT(DATE, a.get_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+  }
+}
+
+// 상품등록 현황 (스토어별 스마트스토어/쿠팡 등록 건수)
+router.get('/upload-product', async (req, res) => {
+  try {
+    const {
+      dateFilter = 'all',
+      userName = '',
+      startDate,
+      endDate
+    } = req.query;
+
+    const pool = await getConnection();
+    const rangeStart = startDate && String(startDate).trim() ? startDate : null;
+    const rangeEnd = endDate && String(endDate).trim() ? endDate : null;
+    const dateCond = buildGoodUserDateCondition(
+      String(dateFilter),
+      rangeStart,
+      rangeEnd
+    );
+
+    let userNameCondition = '';
+    if (userName && String(userName).trim() !== '') {
+      userNameCondition = `AND b.user_name LIKE N'%${String(userName).trim().replace(/'/g, "''")}%'`;
+    }
+
+    // 전체: 기간 제한·get_date NULL 제외 없음. 그 외: get_date 있어야 날짜 조건이 의미 있음
+    const getDateNotNull = dateFilter === 'all' ? '' : 'AND a.get_date IS NOT NULL';
+
+    const statsQuery = `
+      SELECT 
+        a.user_id,
+        b.user_name,
+        a.biz_idx AS store_idx,
+        SUM(CASE WHEN a.result_ss = N'성공' AND a.del_date IS NULL THEN 1 ELSE 0 END) AS smartsotre_cnt,
+        SUM(CASE WHEN a.result_cp = N'성공' AND a.del_date IS NULL THEN 1 ELSE 0 END) AS cupang_cnt
+      FROM tb_good_user a
+      INNER JOIN tb_user b ON a.user_id = b.user_id
+      WHERE a.use_yn = 'Y'
+        ${getDateNotNull}
+        ${dateCond}
+        ${userNameCondition}
+      GROUP BY a.user_id, b.user_name, a.biz_idx
+      ORDER BY b.user_name, a.user_id, a.biz_idx
+    `;
+
+    const result = await pool.request().query(statsQuery);
+
+    res.json({
+      success: true,
+      data: result.recordset
+    });
+  } catch (error) {
+    console.error('상품등록 현황 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '상품등록 현황 조회 중 오류가 발생했습니다.',
       error: error.message
     });
   }

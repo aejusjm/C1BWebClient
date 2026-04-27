@@ -540,3 +540,19 @@
     opacity: 1;
   }
 }
+
+/* 클릭 가능한 사용자명 */
+.clickable-username {
+  color: #1976d2;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.clickable-username:hover {
+  color: #1565c0;
+  text-decoration-color: #1565c0;
+  transform: translateX(2px);
+}

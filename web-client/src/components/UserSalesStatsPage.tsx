@@ -20,14 +20,20 @@ interface UserSalesStats {
   cp_sales: number
   total_order_count: number
   total_sales: number
+  end_date?: string | null
+  user_type?: string
 }
 
 type SortField = 'user_name' | 'total_order_count' | 'total_sales'
 type SortOrder = 'asc' | 'desc'
 
-function UserSalesStatsPage() {
-  const { userInfo } = useUser()
-  const { showAlert } = useAlert()
+interface UserSalesStatsPageProps {
+  onNavigate?: (menu: string) => void
+}
+
+function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
+  const { userInfo, setUserInfo } = useUser()
+  const { showAlert, showConfirm } = useAlert()
   
   // 필터 상태
   const [dateFilter, setDateFilter] = useState('today')
@@ -35,6 +41,7 @@ function UserSalesStatsPage() {
   const [useCustomDate, setUseCustomDate] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [hasSales, setHasSales] = useState(false)
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
@@ -54,7 +61,7 @@ function UserSalesStatsPage() {
     if (userInfo?.userId) {
       loadStats()
     }
-  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, userInfo?.userId])
+  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, userInfo?.userId])
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -130,7 +137,14 @@ function UserSalesStatsPage() {
       const result = await response.json()
       
       if (result.success) {
-        setStats(result.data || [])
+        let filteredData = result.data || []
+        
+        // 매출유 필터 적용
+        if (hasSales) {
+          filteredData = filteredData.filter((stat: UserSalesStats) => stat.total_sales > 0)
+        }
+        
+        setStats(filteredData)
       }
     } catch (error) {
       console.error('사용자별 매출 통계 로드 오류:', error)
@@ -165,6 +179,46 @@ function UserSalesStatsPage() {
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return '↕️'
     return sortOrder === 'asc' ? '↑' : '↓'
+  }
+
+  // 해당 사용자로 로그인
+  const handleLoginAs = async (stat: UserSalesStats) => {
+    const confirmed = await showConfirm(`${stat.user_name}(${stat.user_id}) 계정으로 로그인하시겠습니까?`)
+    if (!confirmed) {
+      return
+    }
+
+    // 종료일 체크
+    if (stat.end_date) {
+      const endDate = new Date(stat.end_date)
+      const today = new Date()
+      if (endDate < today) {
+        await showAlert('사용기한이 지난 계정입니다.')
+        return
+      }
+    }
+
+    // 로컬스토리지에 사용자 정보 저장
+    const newUserInfo = {
+      userId: stat.user_id,
+      userName: stat.user_name,
+      userType: stat.user_type || '',
+      endDate: stat.end_date || null
+    }
+    localStorage.setItem('userInfo', JSON.stringify(newUserInfo))
+    
+    // 로그인 성공 메시지 표시
+    await showAlert(`${stat.user_name} 계정으로 로그인되었습니다.`)
+    
+    // UserContext 업데이트 (메시지 확인 후)
+    setUserInfo(newUserInfo)
+    
+    // 대시보드로 이동
+    if (onNavigate) {
+      onNavigate('dashboard')
+    } else {
+      window.location.reload()
+    }
   }
 
   return (
@@ -225,6 +279,21 @@ function UserSalesStatsPage() {
               {startDate} ~ {endDate}
             </span>
           )}
+        </div>
+
+        <div className="filter-divider"></div>
+
+        {/* 매출 체크박스 */}
+        <div className="filter-section">
+          <span className="filter-label">매출:</span>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={hasSales}
+              onChange={(e) => setHasSales(e.target.checked)}
+            />
+            <span className="checkbox-text">매출 있음</span>
+          </label>
         </div>
 
         <div className="filter-divider"></div>
@@ -297,7 +366,12 @@ function UserSalesStatsPage() {
                 <tr key={stat.user_id}>
                   <td className="center">{index + 1}</td>
                   <td className="center">{stat.user_id}</td>
-                  <td>{stat.user_name}</td>
+                  <td 
+                    className="center clickable-username"
+                    onClick={() => handleLoginAs(stat)}
+                  >
+                    {stat.user_name}
+                  </td>
                   <td className="center cell-store-count">{stat.ss_store_count}</td>
                   <td className="center cell-store-count">{stat.cp_store_count}</td>
                   <td className="right cell-order-count">{stat.ss_order_count.toLocaleString()}</td>

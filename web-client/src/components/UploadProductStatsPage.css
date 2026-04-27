@@ -1,0 +1,107 @@
+/* 상품등록 현황 — 그룹 헤더(연녹/연청/합계 주황)
+   루트 컨테이너 max-width / padding / margin 은 .user-sales-stats-page 와 공유 */
+
+/* '전체' 추가로 nth-child가 밀리므로 이 페이지에서만 날짜 버튼 색 재지정 */
+.upload-product-stats-page .date-filters > button:nth-child(1) {
+  background: #eceff1;
+  border-color: #b0bec5;
+}
+
+.upload-product-stats-page .date-filters > button:nth-child(2),
+.upload-product-stats-page .date-filters > button:nth-child(3) {
+  background: #e3f2fd;
+  border-color: #90caf9;
+}
+
+.upload-product-stats-page .date-filters > button:nth-child(4),
+.upload-product-stats-page .date-filters > button:nth-child(5) {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+}
+
+.upload-product-stats-page .date-filters > button:nth-child(6),
+.upload-product-stats-page .date-filters > button:nth-child(7) {
+  background: #f3e5f5;
+  border-color: #ce93d8;
+}
+
+.upload-product-stats-page .date-filters > button:nth-child(8) {
+  background: #fff3e0;
+  border-color: #ffb74d;
+}
+
+/* nth-child보다 우선: 선택된 날짜 조건 (사용자별 매출과 동일) */
+.upload-product-stats-page .date-filters > button.active {
+  background: #1976d2;
+  color: #fff;
+  border-color: #1976d2;
+  font-weight: 600;
+}
+
+.upload-product-stats-page .date-filters > button.active:hover {
+  background: #1565c0;
+  border-color: #1565c0;
+  color: #fff;
+  opacity: 1;
+  transform: none;
+}
+
+.upload-product-stats-table th.header-group-smartstore {
+  background: #c8e6c9;
+  color: #1b5e20;
+  font-weight: 700;
+}
+
+.upload-product-stats-table th.header-group-coupang {
+  background: #bbdefb;
+  color: #0d47a1;
+  font-weight: 700;
+}
+
+.upload-product-stats-table th.header-sub-smartstore {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.upload-product-stats-table th.header-sub-coupang {
+  background: #e3f2fd;
+  color: #1565c0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.upload-product-stats-table th.platform-total {
+  background: #ffe0b2;
+  color: #e65100;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.upload-product-stats-table td.cell-ss {
+  background: #f1f8f1;
+  font-weight: 500;
+}
+
+.upload-product-stats-table td.cell-ss-total {
+  background: #fff3e0;
+  font-weight: 700;
+  color: #e65100;
+}
+
+.upload-product-stats-table td.cell-cp {
+  background: #f0f7ff;
+  font-weight: 500;
+}
+
+.upload-product-stats-table td.cell-cp-total {
+  background: #fff3e0;
+  font-weight: 700;
+  color: #e65100;
+}
+
+/* 수치 열 데이터: 오른쪽 정렬. 스토어/합계 헤더는 .header-row-2 기본 가운데 */
+.upload-product-stats-table td.cell-num {
+  text-align: right;
+}

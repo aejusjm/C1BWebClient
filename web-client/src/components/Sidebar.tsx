@@ -220,6 +220,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                 >
                   <span className="submenu-icon">💰</span> 사용자별 매출
                 </li>
+                <li 
+                  className={activeMenu === 'upload-product-stats' ? 'active' : ''}
+                  onClick={() => onMenuChange('upload-product-stats')}
+                >
+                  <span className="submenu-icon">📦</span> 상품등록 현황
+                </li>
               </ul>
             </li>
           )}

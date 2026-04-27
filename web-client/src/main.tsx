@@ -10,6 +10,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/pccc-input" element={<PcccInputPage />} />
+        <Route path="/UploadProductStats" element={<App />} />
         <Route path="/*" element={<App />} />
       </Routes>
     </BrowserRouter>

@@ -1,5 +1,6 @@
 // 메인 애플리케이션 컴포넌트 - 대시보드 레이아웃과 전체 구조를 관리
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import './App.css'
 import LoginPage from './components/LoginPage'
 import Sidebar from './components/Sidebar'
@@ -16,6 +17,7 @@ import NoticeManagementPage from './components/NoticeManagementPage'
 import DetailPageManagement from './components/DetailPageManagement'
 import NoWordManagementPage from './components/NoWordManagementPage'
 import UserSalesStatsPage from './components/UserSalesStatsPage'
+import UploadProductStatsPage from './components/UploadProductStatsPage'
 import DailySalesStatsPage from './components/DailySalesStatsPage'
 import SubscriptionPlanPage from './components/SubscriptionPlanPage'
 import ServerManagementPage from './components/ServerManagementPage'
@@ -33,6 +35,7 @@ interface UserInfo {
 }
 
 function App() {
+  const location = useLocation()
   // 로그인 상태 관리
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -54,6 +57,14 @@ function App() {
       setUserInfo(parsedUserInfo)
     }
   }, [])
+
+  // URL /UploadProductStats 로 진입 시 메뉴 동기화
+  useEffect(() => {
+    const p = location.pathname.replace(/\/$/, '') || '/'
+    if (p === '/UploadProductStats' || p.toLowerCase() === '/uploadproductstats') {
+      setActiveMenu('upload-product-stats')
+    }
+  }, [location.pathname])
 
   // 로그인 처리
   const handleLogin = (userId: string, userName: string, userType: string, endDate: string | null) => {
@@ -121,7 +132,8 @@ function App() {
               {activeMenu === 'banned-words' && <NoWordManagementPage />}
               {activeMenu === 'batch-log' && <BatchLogManagementPage />}
               {activeMenu === 'server-management' && <ServerManagementPage />}
-              {activeMenu === 'user-sales-stats' && <UserSalesStatsPage />}
+              {activeMenu === 'user-sales-stats' && <UserSalesStatsPage onNavigate={setActiveMenu} />}
+              {activeMenu === 'upload-product-stats' && <UploadProductStatsPage />}
               {activeMenu === 'subscription-plan' && <SubscriptionPlanPage />}
             </main>
           </div>
