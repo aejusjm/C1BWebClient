@@ -31,7 +31,7 @@ router.get('/servers', async (req, res) => {
 // 사용자 목록 조회 API (검색 기능 포함)
 router.get('/', async (req, res) => {
   try {
-    const { userName, userPhone } = req.query;
+    const { userName, userId, useYn, uploadNormal, reuploadTarget } = req.query;
     
     const pool = await getConnection();
     const columnCheckResult = await pool.request().query(`
@@ -72,17 +72,32 @@ router.get('/', async (req, res) => {
     const request = pool.request();
     
     // 사용자명 검색
-    if (userName && userName.trim() !== '') {
+    if (userName && String(userName).trim() !== '') {
       query += ` AND user_name LIKE @userName`;
-      request.input('userName', sql.NVarChar, `%${userName}%`);
+      request.input('userName', sql.NVarChar, `%${String(userName).trim()}%`);
     }
-    
-    // 전화번호 검색
-    if (userPhone && userPhone.trim() !== '') {
-      query += ` AND user_phone LIKE @userPhone`;
-      request.input('userPhone', sql.NVarChar, `%${userPhone}%`);
+
+    // 사용자ID 검색
+    if (userId && String(userId).trim() !== '') {
+      query += ` AND user_id LIKE @userId`;
+      request.input('userId', sql.NVarChar, `%${String(userId).trim()}%`);
     }
-    
+
+    // 사용여부: 체크 시 use_yn = 'Y' 만
+    if (String(useYn) === '1' || String(useYn).toLowerCase() === 'true') {
+      query += ` AND use_yn = 'Y'`;
+    }
+
+    // 업로드: 체크 시 upload_stop = 'N' (업로드 정상)
+    if (String(uploadNormal) === '1' || String(uploadNormal).toLowerCase() === 'true') {
+      query += ` AND ISNULL(upload_stop, 'N') = 'N'`;
+    }
+
+    // 재업로드여부: 체크 시 reupload_target_yn = 'Y'
+    if (String(reuploadTarget) === '1' || String(reuploadTarget).toLowerCase() === 'true') {
+      query += ` AND reupload_target_yn = 'Y'`;
+    }
+
     query += ` ORDER BY input_date DESC`;
     
     const result = await request.query(query);

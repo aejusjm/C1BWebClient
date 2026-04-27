@@ -44,51 +44,64 @@
   box-shadow: 0 4px 8px rgba(25, 118, 210, 0.4);
 }
 
-/* 검색 영역 */
-.search-area {
+/* 검색 영역 — 사용자명, 전화번호, 검색 버튼 한 줄
+   (NoWordManagementPage.css 등의 전역 .search-group 과 충돌 방지) */
+.user-management-page .search-area {
   background: white;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
 }
 
-.search-row {
+.user-management-page .search-row {
   display: flex;
-  gap: 15px;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 16px 20px;
+  width: 100%;
+  min-width: min-content;
 }
 
-.search-group {
+.user-management-page .search-group {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.search-label {
+.user-management-page .search-label {
+  display: inline-block;
   font-size: 14px;
   font-weight: 600;
   color: #333;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.search-input {
+.user-management-page .search-input {
   padding: 10px 15px;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
-  min-width: 200px;
+  min-width: 180px;
+  width: 200px;
+  max-width: 100%;
   transition: all 0.2s;
 }
 
-.search-input:focus {
+.user-management-page .search-input:focus {
   outline: none;
   border-color: #1976d2;
   box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
 }
 
-.search-btn {
+.user-management-page .search-btn {
   padding: 10px 30px;
+  margin-left: auto;
   background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
   color: white;
   border: none;
@@ -98,16 +111,49 @@
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+  flex-shrink: 0;
+  align-self: center;
+  white-space: nowrap;
 }
 
-.search-btn:hover:not(:disabled) {
+.user-management-page .search-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(25, 118, 210, 0.4);
 }
 
-.search-btn:disabled {
+.user-management-page .search-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 사용자ID 오른쪽 — 체크박스 3개 (한 줄) */
+.user-management-page .search-check-inline {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 16px 22px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding-left: 20px;
+  border-left: 1px solid #cfd8e3;
+}
+
+.user-management-page .search-check-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  user-select: none;
+}
+
+.user-management-page .search-check-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1976d2;
 }
 
 /* 테이블 컨테이너 */
@@ -211,6 +257,43 @@
   vertical-align: middle;
   font-size: 12px;
   color: #555;
+}
+
+.user-table th.th-days-remaining,
+.user-table .td-days-remaining {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 남은일자: 3일 이하 빨강, 4~10일 주황 */
+.user-table .td-days-remaining-critical {
+  color: #b71c1c;
+  font-weight: 700;
+  font-size: 13px;
+  background: #ffebee;
+  box-shadow: inset 4px 0 0 #c62828;
+  border-radius: 0 6px 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.user-table tbody tr:hover .td-days-remaining-critical {
+  background: #ffcdd2;
+  color: #7f0000;
+}
+
+.user-table .td-days-remaining-warning {
+  color: #e65100;
+  font-weight: 700;
+  font-size: 13px;
+  background: #fff3e0;
+  box-shadow: inset 4px 0 0 #f57c00;
+  border-radius: 0 6px 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.user-table tbody tr:hover .td-days-remaining-warning {
+  background: #ffe0b2;
+  color: #bf360c;
 }
 
 .user-table tbody tr {
@@ -999,13 +1082,14 @@
 }
 
 @media (max-width: 768px) {
-  .search-row {
-    flex-direction: column;
-    align-items: stretch;
+  .user-management-page .search-row {
+    flex-wrap: nowrap;
+    align-items: center;
   }
 
-  .search-input {
-    min-width: auto;
+  .user-management-page .search-input {
+    min-width: 120px;
+    width: min(200px, 40vw);
   }
 
   .modal-content {

@@ -73,19 +73,33 @@ interface UserManagementPageProps {
   onNavigate?: (menu: string) => void
 }
 
+/** 종료일(0시) − 오늘(0시) 일수. 미설정/불가 시 null */
+function getDaysRemainingFromEndDate(endDateStr: string | null): number | null {
+  if (!endDateStr) return null
+  const end = new Date(endDateStr)
+  if (Number.isNaN(end.getTime())) return null
+  const today = new Date()
+  end.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+/** 테이블 정렬 키 (남은일자는 end_date 기반 계산) */
+type SortColumnKey = keyof User | 'days_remaining'
+
 function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const { setUserInfo } = useUser()
   const { showAlert, showConfirm } = useAlert()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   
-  // 정렬 상태
+  // 정렬 상태 (기본: 사용자명 오름차순)
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof User | null
+    key: SortColumnKey | null
     direction: 'asc' | 'desc' | null
   }>({
-    key: null,
-    direction: null
+    key: 'user_name',
+    direction: 'asc'
   })
   
   // 이미지 프록시를 통한 안전한 URL 생성
@@ -108,7 +122,13 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   }
   const [searchParams, setSearchParams] = useState({
     userName: '',
-    userPhone: ''
+    userId: '',
+    /** 사용여부: 체크 시 use_yn = Y 인 사용자만 */
+    filterUseYn: false,
+    /** 업로드: 체크 시 upload_stop = N(정상) 인 사용자만 */
+    filterUploadNormal: false,
+    /** 재업로드여부: 체크 시 reupload_target_yn = Y 인 사용자만 */
+    filterReupload: false
   })
   
   // 페이징 상태
@@ -175,14 +195,23 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   }
 
   // 사용자 목록 조회
-  const loadUsers = async (params?: { userName?: string; userPhone?: string }) => {
+  const loadUsers = async (params?: {
+    userName?: string
+    userId?: string
+    filterUseYn?: boolean
+    filterUploadNormal?: boolean
+    filterReupload?: boolean
+  }) => {
     try {
       setLoading(true)
       const queryParams = new URLSearchParams()
-      
-      if (params?.userName) queryParams.append('userName', params.userName)
-      if (params?.userPhone) queryParams.append('userPhone', params.userPhone)
-      
+
+      if (params?.userName?.trim()) queryParams.append('userName', params.userName.trim())
+      if (params?.userId?.trim()) queryParams.append('userId', params.userId.trim())
+      if (params?.filterUseYn) queryParams.append('useYn', '1')
+      if (params?.filterUploadNormal) queryParams.append('uploadNormal', '1')
+      if (params?.filterReupload) queryParams.append('reuploadTarget', '1')
+
       const url = queryParams.toString() ? `${API_URL}?${queryParams}` : API_URL
       console.log('API 요청:', url)
       
@@ -235,6 +264,14 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     }
   }
 
+  /** 체크박스 등 검색조건 반영 + 즉시 API 재조회 (사용자명/ID는 현재 입력값 유지) */
+  const applySearchParamsAndRefetch = (patch: Partial<typeof searchParams>) => {
+    const next = { ...searchParams, ...patch }
+    setSearchParams(next)
+    setCurrentPage(1)
+    void loadUsers(next)
+  }
+
   // 검색 버튼 클릭
   const handleSearch = () => {
     setCurrentPage(1) // 검색 시 첫 페이지로 이동
@@ -242,9 +279,9 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   }
 
   // 정렬 처리
-  const handleSort = (key: keyof User) => {
+  const handleSort = (key: SortColumnKey) => {
     let direction: 'asc' | 'desc' | null = 'asc'
-    
+
     if (sortConfig.key === key) {
       if (sortConfig.direction === 'asc') {
         direction = 'desc'
@@ -252,7 +289,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
         direction = null
       }
     }
-    
+
     setSortConfig({ key: direction ? key : null, direction })
   }
 
@@ -263,20 +300,36 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     }
 
     return [...users].sort((a, b) => {
-      let aValue = a[sortConfig.key!]
-      let bValue = b[sortConfig.key!]
+      if (sortConfig.key === 'days_remaining') {
+        const aD = getDaysRemainingFromEndDate(a.end_date)
+        const bD = getDaysRemainingFromEndDate(b.end_date)
+        if (aD === null && bD === null) return 0
+        if (aD === null) return 1
+        if (bD === null) return -1
+        return sortConfig.direction === 'asc' ? aD - bD : bD - aD
+      }
+
+      const col = sortConfig.key as keyof User
+      let aValue = a[col]
+      let bValue = b[col]
 
       if (aValue === null || aValue === undefined) return 1
       if (bValue === null || bValue === undefined) return -1
 
       // 숫자 타입 컬럼 처리 (proc_ord, margin_rate, get_cnt, del_cnt, del_days, sale_keep_days, marketCount)
-      const numericFields: (keyof User)[] = ['proc_ord', 'margin_rate', 'get_cnt', 'del_cnt', 'del_days', 'sale_keep_days', 'marketCount']
-      if (numericFields.includes(sortConfig.key!)) {
+      const numericFields: (keyof User)[] = [
+        'proc_ord',
+        'margin_rate',
+        'get_cnt',
+        'del_cnt',
+        'del_days',
+        'sale_keep_days',
+        'marketCount'
+      ]
+      if (numericFields.includes(col)) {
         const aNum = Number(aValue) || 0
         const bNum = Number(bValue) || 0
-        return sortConfig.direction === 'asc'
-          ? aNum - bNum
-          : bNum - aNum
+        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -286,9 +339,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       }
 
       if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
       }
 
       return 0
@@ -874,6 +925,13 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     return `${year}.${month}.${day}`
   }
 
+  /** 종료일자(0시) − 오늘(0시) 일수. 미설정/파싱 불가 시 '-' */
+  const formatDaysRemaining = (endDateStr: string | null) => {
+    const n = getDaysRemainingFromEndDate(endDateStr)
+    if (n === null) return '-'
+    return String(n)
+  }
+
   // 날짜시간 포맷팅 (YYYY-MM-DD HH:mm)
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return '-'
@@ -915,7 +973,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   }
 
   // 정렬 아이콘 반환
-  const getSortIcon = (key: keyof User) => {
+  const getSortIcon = (key: SortColumnKey) => {
     if (sortConfig.key !== key) {
       return ' ⇅'
     }
@@ -947,24 +1005,56 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
               type="text"
               className="search-input"
               value={searchParams.userName}
-              onChange={(e) => setSearchParams({...searchParams, userName: e.target.value})}
+              onChange={e => setSearchParams({ ...searchParams, userName: e.target.value })}
               onKeyPress={handleKeyPress}
               placeholder="사용자명 입력"
             />
           </div>
           <div className="search-group">
-            <label className="search-label">전화번호:</label>
+            <label className="search-label">사용자ID:</label>
             <input
               type="text"
               className="search-input"
-              value={searchParams.userPhone}
-              onChange={(e) => setSearchParams({...searchParams, userPhone: e.target.value})}
+              value={searchParams.userId}
+              onChange={e => setSearchParams({ ...searchParams, userId: e.target.value })}
               onKeyPress={handleKeyPress}
-              placeholder="전화번호 입력"
+              placeholder="사용자ID 입력"
             />
           </div>
-          <button 
-            className="search-btn" 
+          <div className="search-check-inline" aria-label="검색 조건">
+            <label className="search-check-item">
+              <input
+                type="checkbox"
+                checked={searchParams.filterUseYn}
+                onChange={e => applySearchParamsAndRefetch({ filterUseYn: e.target.checked })}
+                disabled={loading}
+              />
+              <span>사용여부</span>
+            </label>
+            <label className="search-check-item">
+              <input
+                type="checkbox"
+                checked={searchParams.filterUploadNormal}
+                onChange={e =>
+                  applySearchParamsAndRefetch({ filterUploadNormal: e.target.checked })
+                }
+                disabled={loading}
+              />
+              <span>업로드</span>
+            </label>
+            <label className="search-check-item">
+              <input
+                type="checkbox"
+                checked={searchParams.filterReupload}
+                onChange={e => applySearchParamsAndRefetch({ filterReupload: e.target.checked })}
+                disabled={loading}
+              />
+              <span>재업로드여부</span>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="search-btn"
             onClick={handleSearch}
             disabled={loading}
           >
@@ -1004,14 +1094,17 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                 <th className="sortable" onClick={() => handleSort('user_type')}>
                   사용자종류{getSortIcon('user_type')}
                 </th>
-                <th className="sortable" onClick={() => handleSort('user_phone')}>
-                  연락처{getSortIcon('user_phone')}
-                </th>
                 <th className="sortable" onClick={() => handleSort('start_date')}>
                   시작일자{getSortIcon('start_date')}
                 </th>
                 <th className="sortable" onClick={() => handleSort('end_date')}>
                   종료일자{getSortIcon('end_date')}
+                </th>
+                <th
+                  className="th-days-remaining sortable"
+                  onClick={() => handleSort('days_remaining')}
+                >
+                  남은일자{getSortIcon('days_remaining')}
                 </th>
                 <th className="sortable" onClick={() => handleSort('margin_rate')}>
                   마진율(%){getSortIcon('margin_rate')}
@@ -1049,7 +1142,17 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                   </td>
                 </tr>
               ) : (
-                currentUsers.map((user, index) => (
+                currentUsers.map((user, index) => {
+                  const daysRem = getDaysRemainingFromEndDate(user.end_date)
+                  const daysRemainClass =
+                    daysRem === null
+                      ? ''
+                      : daysRem <= 3
+                        ? ' td-days-remaining-critical'
+                        : daysRem <= 10
+                          ? ' td-days-remaining-warning'
+                          : ''
+                  return (
                   <tr key={user.user_id}>
                     <td>{indexOfFirstItem + index + 1}</td>
                     <td>{user.user_id}</td>
@@ -1060,9 +1163,11 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                       {user.user_name}
                     </td>
                     <td>{user.user_type}</td>
-                    <td>{user.user_phone}</td>
                     <td>{formatDate(user.start_date)}</td>
                     <td>{formatDate(user.end_date)}</td>
+                    <td className={`td-days-remaining${daysRemainClass}`}>
+                      {formatDaysRemaining(user.end_date)}
+                    </td>
                     <td>{user.margin_rate}%</td>
                     <td>{user.server_id}</td>
                     <td>{user.proc_ord}</td>
@@ -1112,7 +1217,8 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                       </button>
                     </td>
                   </tr>
-                ))
+                  )
+                })
               )}
             </tbody>
           </table>

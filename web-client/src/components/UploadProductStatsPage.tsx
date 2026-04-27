@@ -10,6 +10,9 @@ import './UploadProductStatsPage.css'
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
 
+/** 테스트계정 제외 시 제외할 user_id (사용자별 매출과 동일) */
+const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583'])
+
 interface FlatRow {
   user_id: string
   user_name: string
@@ -54,6 +57,7 @@ function UploadProductStatsPage() {
 
   const [rawRows, setRawRows] = useState<FlatRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [excludeTestAccounts, setExcludeTestAccounts] = useState(false)
 
   const [sortField, setSortField] = useState('user_name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -139,14 +143,18 @@ function UploadProductStatsPage() {
   }, [dateFilter, useCustomDate, startDate, endDate, userInfo?.userId])
 
   const { storeKeys, rows } = useMemo(() => {
+    const inputRows = excludeTestAccounts
+      ? rawRows.filter((r) => !EXCLUDED_TEST_USER_IDS.has(r.user_id))
+      : rawRows
+
     const keySet = new Set<string>()
-    for (const r of rawRows) {
+    for (const r of inputRows) {
       keySet.add(String(r.store_idx))
     }
     const storeKeys = sortStoreKeys([...keySet])
 
     const byUser = new Map<string, { user_id: string; user_name: string; ss: Record<string, number>; cp: Record<string, number> }>()
-    for (const r of rawRows) {
+    for (const r of inputRows) {
       const k = String(r.store_idx)
       const ss = Number(r.smartsotre_cnt) || 0
       const cp = Number(r.cupang_cnt) || 0
@@ -179,7 +187,7 @@ function UploadProductStatsPage() {
       })
     }
     return { storeKeys, rows }
-  }, [rawRows])
+  }, [rawRows, excludeTestAccounts])
 
   const comparePivoted = (a: PivotedRow, b: PivotedRow, field: string, order: 'asc' | 'desc'): number => {
     const m = order === 'asc' ? 1 : -1
@@ -310,6 +318,20 @@ function UploadProductStatsPage() {
               {startDate} ~ {endDate}
             </span>
           )}
+        </div>
+
+        <div className="filter-divider" />
+
+        <div className="filter-section">
+          <span className="filter-label">제외:</span>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={excludeTestAccounts}
+              onChange={e => setExcludeTestAccounts(e.target.checked)}
+            />
+            <span className="checkbox-text">테스트계정</span>
+          </label>
         </div>
 
         <div className="filter-divider" />

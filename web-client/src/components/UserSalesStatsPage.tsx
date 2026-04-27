@@ -9,6 +9,9 @@ import './UserSalesStatsPage.css'
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
 
+/** 테스트계정 제외 시 제외할 user_id (체크 시 목록에서 숨김) */
+const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583'])
+
 interface UserSalesStats {
   user_id: string
   user_name: string
@@ -42,6 +45,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [hasSales, setHasSales] = useState(false)
+  const [excludeTestAccounts, setExcludeTestAccounts] = useState(false)
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
@@ -61,7 +65,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
     if (userInfo?.userId) {
       loadStats()
     }
-  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, userInfo?.userId])
+  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, excludeTestAccounts, userInfo?.userId])
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -143,7 +147,13 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
         if (hasSales) {
           filteredData = filteredData.filter((stat: UserSalesStats) => stat.total_sales > 0)
         }
-        
+
+        if (excludeTestAccounts) {
+          filteredData = filteredData.filter(
+            (stat: UserSalesStats) => !EXCLUDED_TEST_USER_IDS.has(stat.user_id)
+          )
+        }
+
         setStats(filteredData)
       }
     } catch (error) {
@@ -283,7 +293,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
 
         <div className="filter-divider"></div>
 
-        {/* 매출 체크박스 */}
+        {/* 매출 / 테스트계정 제외 */}
         <div className="filter-section">
           <span className="filter-label">매출:</span>
           <label className="checkbox-label">
@@ -293,6 +303,15 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
               onChange={(e) => setHasSales(e.target.checked)}
             />
             <span className="checkbox-text">매출 있음</span>
+          </label>
+          <span className="filter-label filter-label-exclude">제외:</span>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={excludeTestAccounts}
+              onChange={(e) => setExcludeTestAccounts(e.target.checked)}
+            />
+            <span className="checkbox-text">테스트계정</span>
           </label>
         </div>
 

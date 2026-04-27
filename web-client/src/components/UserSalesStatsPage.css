@@ -145,6 +145,13 @@
   white-space: nowrap;
 }
 
+/* 매출 옆 '제외: 테스트계정' 구분 */
+.filter-label-exclude {
+  margin-left: 8px;
+  padding-left: 16px;
+  border-left: 1px solid #b0bec5;
+}
+
 /* 마켓 체크박스 */
 .market-checkboxes {
   display: flex;
