@@ -208,14 +208,24 @@
   white-space: nowrap;
 }
 
-.del-type-badge.del-type-all {
-  background: #E3F2FD;
-  color: #1565C0;
+/* 일괄삭제 (DB: 일괄삭제 · 구버전 전체삭제) */
+.del-type-badge.del-type-batch {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffb74d;
 }
 
+/* 즉시삭제 */
 .del-type-badge.del-type-immediate {
-  background: #FCE4EC;
-  color: #C2185B;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #81c784;
+}
+
+.del-type-badge.del-type-unknown {
+  background: #f5f5f5;
+  color: #616161;
+  border: 1px solid #e0e0e0;
 }
 
 /* 전체삭제 버튼 */

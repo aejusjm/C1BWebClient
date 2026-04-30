@@ -3,6 +3,9 @@ const express = require('express');
 const router = express.Router();
 const { getConnection, sql } = require('../config/database');
 
+/** 주문 집계: 판매자코드 길이 7~11자만 (주문관리·대시보드와 동일) */
+const SELLER_CD_LEN_FILTER = 'AND LEN(A.seller_cd) BETWEEN 7 AND 11';
+
 // 사용자별 매출 통계 조회 API
 router.get('/user-sales', async (req, res) => {
   try {
@@ -81,14 +84,16 @@ router.get('/user-sales', async (req, res) => {
            WHERE A.user_id = U.user_id 
            AND A.market_type = 'SS'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
-           ${dateCondition.replace('A.pay_date', 'A.pay_date')}
+           ${dateCondition}
+           ${SELLER_CD_LEN_FILTER}
           ), 0) as ss_order_count,
           ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT)) 
            FROM tb_order_info A
            WHERE A.user_id = U.user_id 
            AND A.market_type = 'SS'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
-           ${dateCondition.replace('A.pay_date', 'A.pay_date')}
+           ${dateCondition}
+           ${SELLER_CD_LEN_FILTER}
           ), 0) as ss_sales,
           -- 쿠팡 통계
           (SELECT COUNT(DISTINCT biz_idx) 
@@ -99,14 +104,16 @@ router.get('/user-sales', async (req, res) => {
            WHERE A.user_id = U.user_id 
            AND A.market_type = 'CP'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
-           ${dateCondition.replace('A.pay_date', 'A.pay_date')}
+           ${dateCondition}
+           ${SELLER_CD_LEN_FILTER}
           ), 0) as cp_order_count,
           ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT)) 
            FROM tb_order_info A
            WHERE A.user_id = U.user_id 
            AND A.market_type = 'CP'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
-           ${dateCondition.replace('A.pay_date', 'A.pay_date')}
+           ${dateCondition}
+           ${SELLER_CD_LEN_FILTER}
           ), 0) as cp_sales
         FROM tb_user U
         WHERE U.use_yn = 'Y'

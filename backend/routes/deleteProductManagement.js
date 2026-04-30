@@ -122,7 +122,7 @@ router.post('/delete-all', async (req, res) => {
         SET 
           input_date = GETDATE(),
           del_date = NULL,
-          del_type = '전체삭제',
+          del_type = N'일괄삭제',
           del_yn = 'N'
         WHERE gu_seq = @guSeq
       `);

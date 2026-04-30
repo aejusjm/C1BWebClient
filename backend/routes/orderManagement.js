@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 const { getConnection, sql } = require('../config/database');
 
+/** 주문/대시보드: 판매자코드 길이 7~11자만 */
+const SELLER_CD_LEN_FILTER = 'AND LEN(A.seller_cd) BETWEEN 7 AND 11';
 
 // 주문 목록 조회 API
 router.get('/orders/:userId', async (req, res) => {
@@ -112,6 +114,7 @@ router.get('/orders/:userId', async (req, res) => {
       ${marketCondition}
       ${storeCondition}
       ${statusCondition}
+      ${SELLER_CD_LEN_FILTER}
     `;
     
     const countResult = await pool.request()
@@ -179,6 +182,7 @@ router.get('/orders/:userId', async (req, res) => {
       ${marketCondition}
       ${storeCondition}
       ${statusCondition}
+      ${SELLER_CD_LEN_FILTER}
       ORDER BY A.pay_date DESC
       OFFSET @offset ROWS 
       FETCH NEXT @limit ROWS ONLY
@@ -295,6 +299,7 @@ router.get('/stats/:userId', async (req, res) => {
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
     `;
     
     const statsResult = await pool.request()
@@ -422,6 +427,7 @@ router.get('/dashboard/market-stats/:userId', async (req, res) => {
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
       GROUP BY A.market_type
     `;
     
@@ -525,6 +531,7 @@ router.get('/dashboard/store-stats/:userId', async (req, res) => {
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
       GROUP BY A.biz_idx, B.store_name
       ORDER BY A.biz_idx
     `;
@@ -624,6 +631,7 @@ router.get('/dashboard/order-trend/:userId', async (req, res) => {
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
       GROUP BY CONVERT(VARCHAR(10), A.pay_date, 23), A.market_type
       ORDER BY CONVERT(VARCHAR(10), A.pay_date, 23)
     `;
@@ -726,6 +734,7 @@ router.get('/dashboard/sales-trend/:userId', async (req, res) => {
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
       GROUP BY CONVERT(VARCHAR(10), A.pay_date, 23), A.market_type
       ORDER BY CONVERT(VARCHAR(10), A.pay_date, 23)
     `;
@@ -828,6 +837,7 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
+      ${SELLER_CD_LEN_FILTER}
     `;
     
     const summaryResult = await pool.request()

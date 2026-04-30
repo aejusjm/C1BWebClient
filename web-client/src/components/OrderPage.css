@@ -678,9 +678,14 @@
 /* 상품명 셀 */
 .product-name-cell {
   max-width: 200px;
+  min-width: 140px;
   text-align: left;
   font-size: 12px;
   line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  vertical-align: top;
 }
 
 /* 날짜 셀 */
@@ -689,12 +694,33 @@
   font-size: 11px;
 }
 
-/* 주소 셀 */
-.address-cell {
-  max-width: 200px;
+/* 옵션명 셀 */
+.opt-info-header,
+.opt-info-cell {
+  min-width: 100px;
+  max-width: 150px;
   text-align: left;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+
+.opt-info-header {
+  text-align: center;
+}
+
+/* 주소 셀 (옵션명과 같이 길면 자동 여러 줄) */
+.address-cell {
+  min-width: 100px;
+  max-width: 150px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  vertical-align: top;
 }
 
 /* 금액 셀 */
@@ -1289,8 +1315,14 @@
   text-decoration: none;
   transition: all 0.2s;
   display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
   padding: 2px 4px;
   border-radius: 4px;
+  box-sizing: border-box;
+  vertical-align: top;
 }
 
 .product-link:hover {

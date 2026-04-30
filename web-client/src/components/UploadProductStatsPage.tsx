@@ -11,7 +11,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
 
 /** 테스트계정 제외 시 제외할 user_id (사용자별 매출과 동일) */
-const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583'])
+const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser'])
 
 interface FlatRow {
   user_id: string
@@ -57,7 +57,7 @@ function UploadProductStatsPage() {
 
   const [rawRows, setRawRows] = useState<FlatRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [excludeTestAccounts, setExcludeTestAccounts] = useState(false)
+  const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
 
   const [sortField, setSortField] = useState('user_name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')

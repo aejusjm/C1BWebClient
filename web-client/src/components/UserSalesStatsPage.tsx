@@ -10,7 +10,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
 
 /** 테스트계정 제외 시 제외할 user_id (체크 시 목록에서 숨김) */
-const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583'])
+const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser'])
 
 interface UserSalesStats {
   user_id: string
@@ -45,7 +45,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [hasSales, setHasSales] = useState(false)
-  const [excludeTestAccounts, setExcludeTestAccounts] = useState(false)
+  const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)

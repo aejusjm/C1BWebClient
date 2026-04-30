@@ -21,6 +21,21 @@ interface DeleteProduct {
   img_url: string
 }
 
+/** DB del_type → 화면 라벨 + 뱃지 클래스 (즉시삭제 / 일괄삭제 구분) */
+function getDelTypeBadge(delType: string | null | undefined): { label: string; className: string } {
+  const t = (delType || '').trim()
+  if (t === '즉시삭제') {
+    return { label: '즉시삭제', className: 'del-type-immediate' }
+  }
+  if (t === '일괄삭제' || t === '전체삭제') {
+    return { label: '일괄삭제', className: 'del-type-batch' }
+  }
+  if (!t) {
+    return { label: '-', className: 'del-type-unknown' }
+  }
+  return { label: t, className: 'del-type-unknown' }
+}
+
 function DeleteProductManagementPage() {
   const { showAlert, showConfirm } = useAlert()
   const [products, setProducts] = useState<DeleteProduct[]>([])
@@ -213,13 +228,18 @@ function DeleteProductManagementPage() {
                   </td>
                 </tr>
               ) : (
-                currentProducts.map((product, index) => (
+                currentProducts.map((product, index) => {
+                  const delBadge = getDelTypeBadge(product.del_type)
+                  return (
                   <tr key={product.seq}>
                     <td>{indexOfFirstItem + index + 1}</td>
                     <td>{product.user_name}</td>
                     <td>
-                      <span className={`del-type-badge ${product.del_type === '전체삭제' ? 'del-type-all' : 'del-type-immediate'}`}>
-                        {product.del_type}
+                      <span
+                        className={`del-type-badge ${delBadge.className}`}
+                        title={product.del_type ? `DB: ${product.del_type}` : ''}
+                      >
+                        {delBadge.label}
                       </span>
                     </td>
                     <td className="reason-cell">{product.del_reason}</td>
@@ -252,7 +272,8 @@ function DeleteProductManagementPage() {
                       </button>
                     </td>
                   </tr>
-                ))
+                  )
+                })
               )}
             </tbody>
           </table>

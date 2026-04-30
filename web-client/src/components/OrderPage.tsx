@@ -909,7 +909,7 @@ function OrderPage() {
                 <th>스토어</th>
                 <th>이미지</th>
                 <th>상품명</th>
-                <th>옵션명</th>
+                <th className="opt-info-header">옵션명</th>
                 <th>결제일</th>
                 <th>결제금액</th>
                 <th className="orderer-header">주문자</th>
@@ -972,12 +972,12 @@ function OrderPage() {
                       order.product_name
                     )}
                   </td>
-                  <td>{order.opt_info || '-'}</td>
+                  <td className="opt-info-cell">{order.opt_info || '-'}</td>
                   <td className="date-cell">{formatDate(order.pay_date)}</td>
                   <td className="amount-cell">{order.pay_amt ? Number(order.pay_amt).toLocaleString() : '0'}원</td>
                   <td className="orderer-cell">{order.ordrr_name}</td>
                   <td className="phone-cell">{order.ordrr_tel}</td>
-                  <td className="address-cell">{order.recvr_addr}</td>
+                  <td className="address-cell">{(order.recvr_addr ?? '').trim() || '-'}</td>
                   <td>
                     {order.PCCC || '-'}
                   </td>
