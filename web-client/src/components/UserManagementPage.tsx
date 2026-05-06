@@ -20,6 +20,9 @@ interface StoreInfo {
   appId: string
   appSecret: string
   useYn: string
+  ga_buy_yn: string | null
+  ga_buy_cnt: number
+  ga_grp_seq: number | null
   isNew?: boolean
 }
 
@@ -66,6 +69,8 @@ interface User {
   cs_phone_apply: string
   biz_hours: string
   upload_stop: string
+  ga_buy: string | null
+  ga_buy_cnt: number
   marketCount?: number
 }
 
@@ -127,6 +132,8 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     filterUseYn: false,
     /** 업로드: 체크 시 upload_stop = N(정상) 인 사용자만 */
     filterUploadNormal: false,
+    /** 가구매사용자 제외: 체크 시 user_type != '가구매' 인 사용자만 */
+    filterExcludeFakePurchase: true,
     /** 재업로드여부: 체크 시 reupload_target_yn = Y 인 사용자만 */
     filterReupload: false
   })
@@ -145,17 +152,13 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const [showMarketModal, setShowMarketModal] = useState(false)
   const [marketUserId, setMarketUserId] = useState('')
   const [marketUserName, setMarketUserName] = useState('')
+  const [marketUserType, setMarketUserType] = useState('')
   const [activeTab, setActiveTab] = useState<'smartstore' | 'coupang'>('smartstore')
-  const [smartStores, setSmartStores] = useState<StoreInfo[]>([
-    { biz_idx: 1, storeName: '', id: '', storeId: '', password: '', appId: '', appSecret: '', useYn: 'Y' },
-    { biz_idx: 2, storeName: '', id: '', storeId: '', password: '', appId: '', appSecret: '', useYn: 'Y' },
-    { biz_idx: 3, storeName: '', id: '', storeId: '', password: '', appId: '', appSecret: '', useYn: 'Y' }
-  ])
-  const [coupangStores, setCoupangStores] = useState<CoupangInfo[]>([
-    { biz_idx: 1, storeName: '', accountId: '', password: '', vendorCode: '', accessKey: '', secretKey: '', useYn: 'Y' },
-    { biz_idx: 2, storeName: '', accountId: '', password: '', vendorCode: '', accessKey: '', secretKey: '', useYn: 'Y' },
-    { biz_idx: 3, storeName: '', accountId: '', password: '', vendorCode: '', accessKey: '', secretKey: '', useYn: 'Y' }
-  ])
+  const [smartStores, setSmartStores] = useState<StoreInfo[]>([])
+  const [coupangStores, setCoupangStores] = useState<CoupangInfo[]>([])
+  
+  // 가구매그룹 목록 상태
+  const [gaGroups, setGaGroups] = useState<{ seq: number; grp_name: string }[]>([])
   
   // 서버 목록 상태
   const [servers, setServers] = useState<ServerInfo[]>([])
@@ -171,8 +174,9 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
 
   // 컴포넌트 마운트 시 전체 사용자 조회 및 서버 목록 조회
   useEffect(() => {
-    loadUsers()
+    loadUsers(searchParams)
     loadServers()
+    loadGaGroups()
   }, [])
 
   // 서버 목록 조회
@@ -194,12 +198,32 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     }
   }
 
+  // 가구매그룹 목록 조회
+  const loadGaGroups = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/fake-purchase-schedule/groups`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setGaGroups(result.data)
+      }
+    } catch (error) {
+      console.error('가구매그룹 목록 조회 오류:', error)
+    }
+  }
+
   // 사용자 목록 조회
   const loadUsers = async (params?: {
     userName?: string
     userId?: string
     filterUseYn?: boolean
     filterUploadNormal?: boolean
+    filterExcludeFakePurchase?: boolean
     filterReupload?: boolean
   }) => {
     try {
@@ -210,6 +234,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       if (params?.userId?.trim()) queryParams.append('userId', params.userId.trim())
       if (params?.filterUseYn) queryParams.append('useYn', '1')
       if (params?.filterUploadNormal) queryParams.append('uploadNormal', '1')
+      if (params?.filterExcludeFakePurchase) queryParams.append('excludeFakePurchase', '1')
       if (params?.filterReupload) queryParams.append('reuploadTarget', '1')
 
       const url = queryParams.toString() ? `${API_URL}?${queryParams}` : API_URL
@@ -368,6 +393,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     const user = users.find(u => u.user_id === userId)
     setMarketUserId(userId)
     setMarketUserName(user?.user_name || '')
+    setMarketUserType(user?.user_type || '')
     setActiveTab('smartstore')
     await loadMarketData(userId)
     setShowMarketModal(true)
@@ -389,35 +415,58 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       
       const result = await response.json()
       
-      if (result.success && result.data.length > 0) {
-        const loadedStores = [1, 2, 3].map(idx => {
-          const found = result.data.find((s: any) => s.biz_idx === idx)
-          return found ? {
-            biz_idx: found.biz_idx,
-            storeName: found.store_name || '',
-            id: found.account_id || '',
-            storeId: found.store_id || '',
-            password: found.user_pwd || '',
-            appId: found.client_id || '',
-            appSecret: found.client_secret_sign || '',
-            useYn: found.use_yn || 'Y',
-            isNew: false
-          } : {
-            biz_idx: idx,
-            storeName: '',
-            id: '',
-            storeId: '',
-            password: '',
-            appId: '',
-            appSecret: '',
-            useYn: 'Y',
-            isNew: true
-          }
-        })
-        setSmartStores(loadedStores)
-      }
+      // 항상 3개의 항목을 표시하되, 데이터가 있으면 채우고 없으면 빈 값으로 표시
+      const loadedStores = [1, 2, 3].map(idx => {
+        const found = result.success && result.data.length > 0 
+          ? result.data.find((s: any) => s.biz_idx === idx) 
+          : null
+        
+        return found ? {
+          biz_idx: found.biz_idx,
+          storeName: found.store_name || '',
+          id: found.account_id || '',
+          storeId: found.store_id || '',
+          password: found.user_pwd || '',
+          appId: found.client_id || '',
+          appSecret: found.client_secret_sign || '',
+          useYn: found.use_yn || 'Y',
+          ga_buy_yn: found.ga_buy_yn || null,
+          ga_buy_cnt: found.ga_buy_cnt || 0,
+          ga_grp_seq: found.ga_grp_seq || null,
+          isNew: false
+        } : {
+          biz_idx: idx,
+          storeName: '',
+          id: '',
+          storeId: '',
+          password: '',
+          appId: '',
+          appSecret: '',
+          useYn: 'Y',
+          ga_buy_yn: null,
+          ga_buy_cnt: 0,
+          ga_grp_seq: null,
+          isNew: true
+        }
+      })
+      setSmartStores(loadedStores)
     } catch (error) {
       console.error('스마트스토어 조회 오류:', error)
+      // 오류 시에도 빈 항목 3개 표시
+      setSmartStores([1, 2, 3].map(idx => ({
+        biz_idx: idx,
+        storeName: '',
+        id: '',
+        storeId: '',
+        password: '',
+        appId: '',
+        appSecret: '',
+        useYn: 'Y',
+        ga_buy_yn: null,
+        ga_buy_cnt: 0,
+        ga_grp_seq: null,
+        isNew: true
+      })))
     }
   }
 
@@ -429,35 +478,49 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       
       const result = await response.json()
       
-      if (result.success && result.data.length > 0) {
-        const loadedStores = [1, 2, 3].map(idx => {
-          const found = result.data.find((c: any) => c.biz_idx === idx)
-          return found ? {
-            biz_idx: found.biz_idx,
-            storeName: found.store_name || '',
-            accountId: found.accountId || '',
-            password: found.user_pwd || '',
-            vendorCode: found.vendorId || '',
-            accessKey: found.accessKey || '',
-            secretKey: found.secretKey || '',
-            useYn: found.use_yn || 'Y',
-            isNew: false
-          } : {
-            biz_idx: idx,
-            storeName: '',
-            accountId: '',
-            password: '',
-            vendorCode: '',
-            accessKey: '',
-            secretKey: '',
-            useYn: 'Y',
-            isNew: true
-          }
-        })
-        setCoupangStores(loadedStores)
-      }
+      // 항상 3개의 항목을 표시하되, 데이터가 있으면 채우고 없으면 빈 값으로 표시
+      const loadedStores = [1, 2, 3].map(idx => {
+        const found = result.success && result.data.length > 0 
+          ? result.data.find((c: any) => c.biz_idx === idx) 
+          : null
+        
+        return found ? {
+          biz_idx: found.biz_idx,
+          storeName: found.store_name || '',
+          accountId: found.accountId || '',
+          password: found.user_pwd || '',
+          vendorCode: found.vendorId || '',
+          accessKey: found.accessKey || '',
+          secretKey: found.secretKey || '',
+          useYn: found.use_yn || 'Y',
+          isNew: false
+        } : {
+          biz_idx: idx,
+          storeName: '',
+          accountId: '',
+          password: '',
+          vendorCode: '',
+          accessKey: '',
+          secretKey: '',
+          useYn: 'Y',
+          isNew: true
+        }
+      })
+      setCoupangStores(loadedStores)
     } catch (error) {
       console.error('쿠팡 조회 오류:', error)
+      // 오류 시에도 빈 항목 3개 표시
+      setCoupangStores([1, 2, 3].map(idx => ({
+        biz_idx: idx,
+        storeName: '',
+        accountId: '',
+        password: '',
+        vendorCode: '',
+        accessKey: '',
+        secretKey: '',
+        useYn: 'Y',
+        isNew: true
+      })))
     }
   }
 
@@ -465,29 +528,32 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const handleSmartStoreSave = async (index: number) => {
     const store = smartStores[index]
     
-    // 연동 테스트 (토큰 발급 성공 여부)
-    try {
-      const testResponse = await fetch(`${SMARTSTORE_API_URL}/token-test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          marketAccount: store.id,
-          clientId: store.appId,
-          clientSecret: store.appSecret
+    // 사용자종류가 '가구매'가 아닌 경우에만 연동 테스트 수행
+    if (marketUserType !== '가구매') {
+      // 연동 테스트 (토큰 발급 성공 여부)
+      try {
+        const testResponse = await fetch(`${SMARTSTORE_API_URL}/token-test`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            marketAccount: store.id,
+            clientId: store.appId,
+            clientSecret: store.appSecret
+          })
         })
-      })
 
-      const testResult = await testResponse.json()
-      if (!testResult.success) {
-        await showAlert(testResult.message || '스마트스토어 연동 테스트에 실패했습니다.')
+        const testResult = await testResponse.json()
+        if (!testResult.success) {
+          await showAlert(testResult.message || '스마트스토어 연동 테스트에 실패했습니다.')
+          return
+        }
+      } catch (error) {
+        console.error('스마트스토어 연동 테스트 오류:', error)
+        await showAlert('스마트스토어 연동 테스트 중 오류가 발생했습니다.')
         return
       }
-    } catch (error) {
-      console.error('스마트스토어 연동 테스트 오류:', error)
-      await showAlert('스마트스토어 연동 테스트 중 오류가 발생했습니다.')
-      return
     }
     
     try {
@@ -503,7 +569,10 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
           user_pwd: store.password,
           client_id: store.appId,
           client_secret_sign: store.appSecret,
-          use_yn: store.useYn
+          use_yn: store.useYn,
+          ga_buy_yn: store.ga_buy_yn,
+          ga_buy_cnt: store.ga_buy_cnt,
+          ga_grp_seq: store.ga_grp_seq
         })
       })
 
@@ -526,29 +595,32 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const handleCoupangSave = async (index: number) => {
     const store = coupangStores[index]
     
-    // 쿠팡 연동 테스트
-    try {
-      const testResponse = await fetch(`${COUPANG_API_URL}/auth-test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          vendorId: store.vendorCode,
-          accessKey: store.accessKey,
-          secretKey: store.secretKey
+    // 사용자종류가 '가구매'가 아닌 경우에만 쿠팡 연동 테스트 수행
+    if (marketUserType !== '가구매') {
+      // 쿠팡 연동 테스트
+      try {
+        const testResponse = await fetch(`${COUPANG_API_URL}/auth-test`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            vendorId: store.vendorCode,
+            accessKey: store.accessKey,
+            secretKey: store.secretKey
+          })
         })
-      })
 
-      const testResult = await testResponse.json()
-      if (!testResult.success) {
-        await showAlert(testResult.message || '쿠팡 연동 테스트에 실패했습니다.')
+        const testResult = await testResponse.json()
+        if (!testResult.success) {
+          await showAlert(testResult.message || '쿠팡 연동 테스트에 실패했습니다.')
+          return
+        }
+      } catch (error) {
+        console.error('쿠팡 연동 테스트 오류:', error)
+        await showAlert('쿠팡 연동 테스트 중 오류가 발생했습니다.')
         return
       }
-    } catch (error) {
-      console.error('쿠팡 연동 테스트 오류:', error)
-      await showAlert('쿠팡 연동 테스트 중 오류가 발생했습니다.')
-      return
     }
     
     try {
@@ -584,7 +656,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   }
 
   // 스마트스토어 정보 변경
-  const handleSmartStoreChange = (index: number, field: keyof StoreInfo, value: string) => {
+  const handleSmartStoreChange = (index: number, field: keyof StoreInfo, value: any) => {
     const updated = [...smartStores]
     updated[index] = { ...updated[index], [field]: value }
     setSmartStores(updated)
@@ -761,7 +833,9 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       del_days: 0,
       sale_keep_days: 0,
       proc_ord: 0,
-      upload_stop: 'N'
+      upload_stop: 'N',
+      ga_buy: null,  // 기본값 null (체크 안 됨)
+      ga_buy_cnt: 0
     })
     setShowEditModal(true)
   }
@@ -1045,6 +1119,17 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
             <label className="search-check-item">
               <input
                 type="checkbox"
+                checked={searchParams.filterExcludeFakePurchase}
+                onChange={e =>
+                  applySearchParamsAndRefetch({ filterExcludeFakePurchase: e.target.checked })
+                }
+                disabled={loading}
+              />
+              <span>가구매사용자 제외</span>
+            </label>
+            <label className="search-check-item">
+              <input
+                type="checkbox"
                 checked={searchParams.filterReupload}
                 onChange={e => applySearchParamsAndRefetch({ filterReupload: e.target.checked })}
                 disabled={loading}
@@ -1162,7 +1247,16 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                     >
                       {user.user_name}
                     </td>
-                    <td>{user.user_type}</td>
+                    <td>
+                      <span className={`status-badge ${
+                        user.user_type === '관리자' ? 'admin' : 
+                        user.user_type === '가구매' ? 'fake-purchase' : 
+                        user.user_type === '우대' ? 'preferred' : 
+                        'normal'
+                      }`}>
+                        {user.user_type || '일반'}
+                      </span>
+                    </td>
                     <td>{formatDate(user.start_date)}</td>
                     <td>{formatDate(user.end_date)}</td>
                     <td className={`td-days-remaining${daysRemainClass}`}>
@@ -1329,6 +1423,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                     <option value="">선택하세요</option>
                     <option value="일반">일반</option>
                     <option value="우대">우대</option>
+                    <option value="가구매">가구매</option>
                     <option value="관리자">관리자</option>
                   </select>
                 </div>
@@ -1490,6 +1585,33 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                       중지
                     </span>
                   </div>
+                </div>
+
+                {/* 가구매여부 */}
+                <div className="modal-field">
+                  <label>가구매여부</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={editData.ga_buy === 'Y'}
+                      onChange={(e) => handleEditChange('ga_buy', e.target.checked ? 'Y' : 'N')}
+                      style={{ width: 'auto', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#666' }}>
+                      사용
+                    </span>
+                  </div>
+                </div>
+
+                {/* 가구매건수 */}
+                <div className="modal-field">
+                  <label>가구매건수</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editData.ga_buy_cnt || 0}
+                    onChange={(e) => handleEditChange('ga_buy_cnt', parseInt(e.target.value) || 0)}
+                  />
                 </div>
 
                 {/* 마지막처리일시 (읽기전용) */}
@@ -1674,6 +1796,43 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                           >
                             <option value="Y">사용</option>
                             <option value="N">미사용</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="field-label">가구매여부</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', background: 'white', border: '1px solid #ddd', borderRadius: '4px' }}>
+                            <input
+                              type="checkbox"
+                              checked={store.ga_buy_yn === 'Y'}
+                              onChange={(e) => handleSmartStoreChange(index, 'ga_buy_yn', e.target.checked ? 'Y' : 'N')}
+                              style={{ width: 'auto', cursor: 'pointer', margin: 0 }}
+                            />
+                            <span style={{ fontSize: '13px', color: '#333' }}>사용</span>
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label className="field-label">가구매건수</label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="field-input"
+                            value={store.ga_buy_cnt || 0}
+                            onChange={(e) => handleSmartStoreChange(index, 'ga_buy_cnt', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="field-label">가구매그룹</label>
+                          <select
+                            className="field-input"
+                            value={store.ga_grp_seq || ''}
+                            onChange={(e) => handleSmartStoreChange(index, 'ga_grp_seq', e.target.value ? parseInt(e.target.value) : null)}
+                          >
+                            <option value="">선택안함</option>
+                            {gaGroups.map((group) => (
+                              <option key={group.seq} value={group.seq}>
+                                {group.grp_name}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <button 

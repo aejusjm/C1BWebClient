@@ -81,6 +81,12 @@ function LoginPage({ onLogin }: LoginPageProps) {
       if (result.success) {
         const user = result.data
         
+        // 사용자종류 확인 - '가구매' 차단
+        if (user.user_type === '가구매') {
+          await showAlert('가구매 계정은 로그인할 수 없습니다.')
+          return
+        }
+        
         // 종료일자 확인
         if (user.end_date) {
           const endDate = new Date(user.end_date)

@@ -31,7 +31,7 @@ router.get('/servers', async (req, res) => {
 // 사용자 목록 조회 API (검색 기능 포함)
 router.get('/', async (req, res) => {
   try {
-    const { userName, userId, useYn, uploadNormal, reuploadTarget } = req.query;
+    const { userName, userId, useYn, uploadNormal, excludeFakePurchase, reuploadTarget } = req.query;
     
     const pool = await getConnection();
     const columnCheckResult = await pool.request().query(`
@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
         margin_rate, user_phone, user_email, input_date, server_id,
         last_proc_date, proc_ord, batch_date, last_delete_date, use_yn,
         reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
-        cs_phone, cs_phone_apply, biz_hours, upload_stop, ${dispatchSelect}, ${rturnSelect}
+        cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, ${dispatchSelect}, ${rturnSelect}
       FROM tb_user
       WHERE 1=1
     `;
@@ -91,6 +91,11 @@ router.get('/', async (req, res) => {
     // 업로드: 체크 시 upload_stop = 'N' (업로드 정상)
     if (String(uploadNormal) === '1' || String(uploadNormal).toLowerCase() === 'true') {
       query += ` AND ISNULL(upload_stop, 'N') = 'N'`;
+    }
+
+    // 가구매사용자 제외: 체크 시 user_type != '가구매'
+    if (String(excludeFakePurchase) === '1' || String(excludeFakePurchase).toLowerCase() === 'true') {
+      query += ` AND user_type != N'가구매'`;
     }
 
     // 재업로드여부: 체크 시 reupload_target_yn = 'Y'
@@ -162,7 +167,7 @@ router.get('/:userId', async (req, res) => {
           margin_rate, user_phone, user_email, input_date, server_id,
           last_proc_date, proc_ord, batch_date, last_delete_date, use_yn,
           reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
-          cs_phone, cs_phone_apply, biz_hours, upload_stop, ${dispatchSelect}, ${rturnSelect}
+          cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, ${dispatchSelect}, ${rturnSelect}
         FROM tb_user
         WHERE user_id = @userId
       `);
@@ -201,7 +206,7 @@ router.post('/', async (req, res) => {
     const {
       user_id, user_pwd, user_name, start_date, end_date, user_type,
       margin_rate, user_phone, user_email, server_id,
-      use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop
+      use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt
     } = req.body;
     
     // 필수 필드 검증
@@ -246,15 +251,17 @@ router.post('/', async (req, res) => {
       .input('sale_keep_days', sql.Int, sale_keep_days || 0)
       .input('proc_ord', sql.Int, proc_ord || 0)
       .input('upload_stop', sql.NVarChar, upload_stop || 'N')
+      .input('ga_buy', sql.NVarChar, ga_buy || null)
+      .input('ga_buy_cnt', sql.Int, ga_buy_cnt || 0)
       .query(`
         INSERT INTO tb_user (
           user_id, user_pwd, user_name, start_date, end_date, user_type,
           margin_rate, user_phone, user_email, server_id, use_yn, reupload_target_yn,
-          get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, input_date
+          get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt, input_date
         ) VALUES (
           @user_id, @user_pwd, @user_name, @start_date, @end_date, @user_type,
           @margin_rate, @user_phone, @user_email, @server_id, @use_yn, @reupload_target_yn,
-          @get_cnt, @del_cnt, @del_days, @sale_keep_days, @proc_ord, @upload_stop, GETDATE()
+          @get_cnt, @del_cnt, @del_days, @sale_keep_days, @proc_ord, @upload_stop, @ga_buy, @ga_buy_cnt, GETDATE()
         )
       `);
     
@@ -284,7 +291,7 @@ router.put('/:userId', async (req, res) => {
       margin_rate, user_phone, user_email, server_id,
       use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
       proc_ord, last_proc_date, batch_date, last_delete_date,
-      cs_phone, cs_phone_apply, biz_hours, upload_stop, // 추가된 필드
+      cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, // 추가된 필드
       current_password // 비밀번호 변경 시 현재 비밀번호 검증용
     } = req.body;
     
@@ -339,7 +346,9 @@ router.put('/:userId', async (req, res) => {
       .input('cs_phone', sql.NVarChar, cs_phone || '')
       .input('cs_phone_apply', sql.NVarChar, cs_phone_apply || 'N')
       .input('biz_hours', sql.NVarChar, biz_hours || '')
-      .input('upload_stop', sql.NVarChar, upload_stop || 'N');
+      .input('upload_stop', sql.NVarChar, upload_stop || 'N')
+      .input('ga_buy', sql.NVarChar, ga_buy || null)
+      .input('ga_buy_cnt', sql.Int, ga_buy_cnt || 0);
     
     if (isMaskedPassword) {
       // 비밀번호 제외하고 업데이트
@@ -367,7 +376,9 @@ router.put('/:userId', async (req, res) => {
           cs_phone = @cs_phone,
           cs_phone_apply = @cs_phone_apply,
           biz_hours = @biz_hours,
-          upload_stop = @upload_stop
+          upload_stop = @upload_stop,
+          ga_buy = @ga_buy,
+          ga_buy_cnt = @ga_buy_cnt
         WHERE user_id = @userId
       `;
     } else {
@@ -398,7 +409,9 @@ router.put('/:userId', async (req, res) => {
           cs_phone = @cs_phone,
           cs_phone_apply = @cs_phone_apply,
           biz_hours = @biz_hours,
-          upload_stop = @upload_stop
+          upload_stop = @upload_stop,
+          ga_buy = @ga_buy,
+          ga_buy_cnt = @ga_buy_cnt
         WHERE user_id = @userId
       `;
     }

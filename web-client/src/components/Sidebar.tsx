@@ -90,71 +90,79 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
       {/* 메뉴 네비게이션 */}
       <nav className="menu-nav">
         <ul className="menu-list">
-          <li 
-            className={activeMenu === 'dashboard' ? 'active' : ''}
-            onClick={() => onMenuChange('dashboard')}
-          >
-            <div className="menu-title">
-              <span className="menu-icon">📊</span> 대시보드
-            </div>
-          </li>
-          <li 
-            className={activeMenu === 'orders' ? 'active' : ''}
-            onClick={() => onMenuChange('orders')}
-          >
-            <div className="menu-title">
-              <span className="menu-icon">🛒</span> 주문관리
-            </div>
-          </li>
-          <li 
-            className={activeMenu === 'products' ? 'active' : ''}
-            onClick={() => onMenuChange('products')}
-          >
-            <div className="menu-title">
-              <span className="menu-icon">📦</span> 상품관리
-            </div>
-          </li>
-          <li 
-            className={activeMenu === 'order-sales-stats' ? 'active' : ''}
-            onClick={() => onMenuChange('order-sales-stats')}
-          >
-            <div className="menu-title">
-              <span className="menu-icon">💰</span> 매출통계
-            </div>
-          </li>
-          <li 
-            className={activeMenu === 'notices' ? 'active' : ''}
-            onClick={() => onMenuChange('notices')}
-          >
-            <div className="menu-title">
-              <span className="menu-icon">📢</span> 공지사항
-            </div>
-          </li>
-          <li className="menu-parent">
-            <div className="menu-title">
-              <span className="menu-icon">⚙️</span> 설정
-            </div>
-            <ul className="submenu">
+          {/* 일반 사용자 메뉴 - 관리자에게는 숨김 */}
+          {!isAdmin && (
+            <>
               <li 
-                className={activeMenu === 'account' ? 'active' : ''}
-                onClick={() => onMenuChange('account')}
+                className={activeMenu === 'dashboard' ? 'active' : ''}
+                onClick={() => onMenuChange('dashboard')}
               >
-                <span className="submenu-icon">👤</span> 계정관리
+                <div className="menu-title">
+                  <span className="menu-icon">📊</span> 대시보드
+                </div>
               </li>
               <li 
-                className={activeMenu === 'basic' ? 'active' : ''}
-                onClick={() => onMenuChange('basic')}
+                className={activeMenu === 'orders' ? 'active' : ''}
+                onClick={() => onMenuChange('orders')}
               >
-                <span className="submenu-icon">📋</span> 기본정보
+                <div className="menu-title">
+                  <span className="menu-icon">🛒</span> 주문관리
+                </div>
               </li>
               <li 
-                className={activeMenu === 'market' ? 'active' : ''}
-                onClick={() => onMenuChange('market')}
+                className={activeMenu === 'products' ? 'active' : ''}
+                onClick={() => onMenuChange('products')}
               >
-                <span className="submenu-icon">🔗</span> 마켓연동
+                <div className="menu-title">
+                  <span className="menu-icon">📦</span> 상품관리
+                </div>
               </li>
-            </ul>
-          </li>
+              <li 
+                className={activeMenu === 'order-sales-stats' ? 'active' : ''}
+                onClick={() => onMenuChange('order-sales-stats')}
+              >
+                <div className="menu-title">
+                  <span className="menu-icon">💰</span> 매출통계
+                </div>
+              </li>
+              <li 
+                className={activeMenu === 'notices' ? 'active' : ''}
+                onClick={() => onMenuChange('notices')}
+              >
+                <div className="menu-title">
+                  <span className="menu-icon">📢</span> 공지사항
+                </div>
+              </li>
+            </>
+          )}
+          {/* 설정 메뉴 - 관리자에게는 숨김 */}
+          {!isAdmin && (
+            <li className="menu-parent">
+              <div className="menu-title">
+                <span className="menu-icon">⚙️</span> 설정
+              </div>
+              <ul className="submenu">
+                <li 
+                  className={activeMenu === 'account' ? 'active' : ''}
+                  onClick={() => onMenuChange('account')}
+                >
+                  <span className="submenu-icon">👤</span> 계정관리
+                </li>
+                <li 
+                  className={activeMenu === 'basic' ? 'active' : ''}
+                  onClick={() => onMenuChange('basic')}
+                >
+                  <span className="submenu-icon">📋</span> 기본정보
+                </li>
+                <li 
+                  className={activeMenu === 'market' ? 'active' : ''}
+                  onClick={() => onMenuChange('market')}
+                >
+                  <span className="submenu-icon">🔗</span> 마켓연동
+                </li>
+              </ul>
+            </li>
+          )}
           {/* 관리자 메뉴 - 관리자만 표시 */}
           {isAdmin && (
             <li className="menu-parent">
@@ -225,6 +233,34 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   onClick={() => onMenuChange('upload-product-stats')}
                 >
                   <span className="submenu-icon">📦</span> 상품등록 현황
+                </li>
+              </ul>
+            </li>
+          )}
+          {/* 가구매관리 메뉴 - 관리자만 표시 */}
+          {isAdmin && (
+            <li className="menu-parent">
+              <div className="menu-title">
+                <span className="menu-icon">🛍️</span> 가구매관리
+              </div>
+              <ul className="submenu">
+                <li 
+                  className={activeMenu === 'fake-purchase-user' ? 'active' : ''}
+                  onClick={() => onMenuChange('fake-purchase-user')}
+                >
+                  <span className="submenu-icon">👥</span> 가구매 사용자관리
+                </li>
+                <li 
+                  className={activeMenu === 'fake-purchase-product' ? 'active' : ''}
+                  onClick={() => onMenuChange('fake-purchase-product')}
+                >
+                  <span className="submenu-icon">🏷️</span> 가구매 상품관리
+                </li>
+                <li 
+                  className={activeMenu === 'fake-purchase-schedule' ? 'active' : ''}
+                  onClick={() => onMenuChange('fake-purchase-schedule')}
+                >
+                  <span className="submenu-icon">📅</span> 가구매 일정관리
                 </li>
               </ul>
             </li>

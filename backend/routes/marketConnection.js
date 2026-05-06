@@ -44,7 +44,10 @@ router.get('/smartstore/:userId', async (req, res) => {
           store_id,
           client_id, 
           client_secret_sign, 
-          [use_yn]
+          [use_yn],
+          ga_buy_yn,
+          ga_buy_cnt,
+          ga_grp_seq
         FROM tb_user_market_ss
         WHERE user_id = @userId
         ORDER BY biz_idx
@@ -99,9 +102,9 @@ router.get('/coupang/:userId', async (req, res) => {
 router.post('/smartstore/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { biz_idx, store_name, account_id, user_pwd, store_id, client_id, client_secret_sign, use_yn } = req.body;
+    const { biz_idx, store_name, account_id, user_pwd, store_id, client_id, client_secret_sign, use_yn, ga_buy_yn, ga_buy_cnt, ga_grp_seq } = req.body;
     
-    console.log('스마트스토어 저장 요청:', { userId, biz_idx, store_name, account_id, client_id, use_yn });
+    console.log('스마트스토어 저장 요청:', { userId, biz_idx, store_name, account_id, client_id, use_yn, ga_buy_yn, ga_buy_cnt, ga_grp_seq });
     
     const pool = await getConnection();
     
@@ -123,6 +126,9 @@ router.post('/smartstore/:userId', async (req, res) => {
         .input('clientId', sql.NVarChar, client_id)
         .input('clientSecretSign', sql.NVarChar, client_secret_sign)
         .input('useYn', sql.NVarChar, use_yn)
+        .input('gaBuyYn', sql.NVarChar, ga_buy_yn || null)
+        .input('gaBuyCnt', sql.Int, ga_buy_cnt || 0)
+        .input('gaGrpSeq', sql.Int, ga_grp_seq || null)
         .query(`
           UPDATE tb_user_market_ss
           SET 
@@ -132,7 +138,10 @@ router.post('/smartstore/:userId', async (req, res) => {
             store_id = @storeId,
             client_id = @clientId,
             client_secret_sign = @clientSecretSign,
-            [use_yn] = @useYn
+            [use_yn] = @useYn,
+            ga_buy_yn = @gaBuyYn,
+            ga_buy_cnt = @gaBuyCnt,
+            ga_grp_seq = @gaGrpSeq
           WHERE user_id = @userId AND biz_idx = @bizIdx
         `);
     } else {
@@ -147,11 +156,14 @@ router.post('/smartstore/:userId', async (req, res) => {
         .input('clientId', sql.NVarChar, client_id)
         .input('clientSecretSign', sql.NVarChar, client_secret_sign)
         .input('useYn', sql.NVarChar, use_yn)
+        .input('gaBuyYn', sql.NVarChar, ga_buy_yn || null)
+        .input('gaBuyCnt', sql.Int, ga_buy_cnt || 0)
+        .input('gaGrpSeq', sql.Int, ga_grp_seq || null)
         .query(`
           INSERT INTO tb_user_market_ss 
-            (user_id, biz_idx, store_name, account_id, user_pwd, store_id, client_id, client_secret_sign, [use_yn])
+            (user_id, biz_idx, store_name, account_id, user_pwd, store_id, client_id, client_secret_sign, [use_yn], ga_buy_yn, ga_buy_cnt, ga_grp_seq)
           VALUES 
-            (@userId, @bizIdx, @storeName, @accountId, @userPwd, @storeId, @clientId, @clientSecretSign, @useYn)
+            (@userId, @bizIdx, @storeName, @accountId, @userPwd, @storeId, @clientId, @clientSecretSign, @useYn, @gaBuyYn, @gaBuyCnt, @gaGrpSeq)
         `);
     }
     

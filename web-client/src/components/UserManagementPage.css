@@ -331,6 +331,32 @@
   color: #C62828;
 }
 
+/* 사용자종류 뱃지 스타일 */
+.status-badge.admin {
+  background: #FFEBEE;
+  color: #C62828;
+  font-weight: 700;
+}
+
+.status-badge.fake-purchase {
+  background: #FFF3E0;
+  color: #E65100;
+  font-weight: 700;
+}
+
+.status-badge.preferred {
+  background: #E3F2FD;
+  color: #1565C0;
+  font-weight: 700;
+}
+
+.status-badge.normal {
+  background: #E1F5FE;
+  color: #0277BD;
+  font-weight: 600;
+}
+
+
 /* 수정 버튼 */
 .user-management-page .edit-btn,
 .user-table .edit-btn {
@@ -775,7 +801,7 @@
 
 /* 마켓연동 모달: 항목 간격 축소 (한 화면에 더 많이 보이도록) */
 .modal-content.market-modal .modal-header {
-  padding: 12px 16px;
+  padding: 8px 14px;
 }
 
 .modal-content.market-modal .modal-title {
@@ -787,38 +813,38 @@
 }
 
 .modal-content.market-modal .tab-btn {
-  padding: 8px 18px;
+  padding: 6px 16px;
   font-size: 14px;
 }
 
 .modal-content.market-modal .market-section {
-  padding: 10px 14px;
+  padding: 6px 12px;
 }
 
 .modal-content.market-modal .section-title {
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   font-size: 14px;
   gap: 6px;
 }
 
 .modal-content.market-modal .store-grid {
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .modal-content.market-modal .store-card {
-  padding: 8px;
-  gap: 5px;
+  padding: 6px;
+  gap: 1px;
 }
 
 .modal-content.market-modal .store-card-title {
-  margin: 0 0 4px 0;
-  padding-bottom: 4px;
+  margin: 0 0 2px 0;
+  padding-bottom: 2px;
   font-size: 13px;
 }
 
 .modal-content.market-modal .form-group {
-  gap: 2px;
+  gap: 0px;
 }
 
 .modal-content.market-modal .field-label {
@@ -826,7 +852,7 @@
 }
 
 .modal-content.market-modal .field-input {
-  padding: 5px 8px;
+  padding: 4px 8px;
   font-size: 12px;
 }
 
@@ -837,7 +863,7 @@
 .modal-content.market-modal .store-save-btn {
   padding: 6px 12px;
   font-size: 12px;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .modal-content.market-modal .disabled-badge,

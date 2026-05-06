@@ -1,0 +1,28 @@
+/* 가구매 상품관리 페이지 스타일 */
+.fake-purchase-product-page {
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.fake-purchase-product-page .page-header {
+  margin-bottom: 20px;
+}
+
+.fake-purchase-product-page .page-header h1 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.fake-purchase-product-page .page-content {
+  background: white;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fake-purchase-product-page .page-content p {
+  font-size: 16px;
+  color: #666;
+}

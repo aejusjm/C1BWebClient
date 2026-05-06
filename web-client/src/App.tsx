@@ -23,6 +23,9 @@ import SubscriptionPlanPage from './components/SubscriptionPlanPage'
 import ServerManagementPage from './components/ServerManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
 import BatchLogManagementPage from './components/BatchLogManagementPage'
+import FakePurchaseUserPage from './components/FakePurchaseUserPage'
+import FakePurchaseProductPage from './components/FakePurchaseProductPage'
+import FakePurchaseSchedulePage from './components/FakePurchaseSchedulePage'
 import { UserProvider } from './contexts/UserContext'
 import { FilterProvider } from './contexts/FilterContext'
 import { AlertProvider } from './contexts/AlertContext'
@@ -55,6 +58,10 @@ function App() {
       const parsedUserInfo = JSON.parse(savedUserInfo)
       setIsLoggedIn(true)
       setUserInfo(parsedUserInfo)
+      // 관리자인 경우 사용자별 매출 페이지로 이동
+      if (parsedUserInfo.userType === '관리자') {
+        setActiveMenu('user-sales-stats')
+      }
     }
   }, [])
 
@@ -77,6 +84,10 @@ function App() {
     setIsLoggedIn(true)
     setUserInfo(newUserInfo)
     localStorage.setItem('userInfo', JSON.stringify(newUserInfo))
+    // 관리자인 경우 사용자별 매출 페이지로 이동
+    if (userType === '관리자') {
+      setActiveMenu('user-sales-stats')
+    }
   }
 
   // 로그아웃 처리
@@ -134,6 +145,9 @@ function App() {
               {activeMenu === 'server-management' && <ServerManagementPage />}
               {activeMenu === 'user-sales-stats' && <UserSalesStatsPage onNavigate={setActiveMenu} />}
               {activeMenu === 'upload-product-stats' && <UploadProductStatsPage />}
+              {activeMenu === 'fake-purchase-user' && <FakePurchaseUserPage />}
+              {activeMenu === 'fake-purchase-product' && <FakePurchaseProductPage />}
+              {activeMenu === 'fake-purchase-schedule' && <FakePurchaseSchedulePage />}
               {activeMenu === 'subscription-plan' && <SubscriptionPlanPage />}
             </main>
           </div>

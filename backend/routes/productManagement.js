@@ -66,7 +66,7 @@ router.get('/products/:userId', async (req, res) => {
         ON A.user_id = C.user_id 
         AND A.biz_idx = C.biz_idx 
       WHERE A.user_id = @userId
-        AND result_ss ='성공'
+        AND (result_ss ='성공' OR result_cp ='성공')
         AND del_date IS NULL 
         AND A.use_yn = N'Y'
     `;
@@ -98,10 +98,10 @@ router.get('/products/:userId', async (req, res) => {
       dataRequest.input('productCode', sql.NVarChar, `%${cleanCode}%`);
     }
     
-    // 상품명 검색
+    // 상품명 검색 (good_name_ss 또는 good_name_cp 둘 중 하나라도 포함되면 검색)
     if (productName) {
-      countQuery += ` AND A.good_name_ss LIKE @productName`;
-      dataQuery += ` AND A.good_name_ss LIKE @productName`;
+      countQuery += ` AND (A.good_name_ss LIKE @productName OR A.good_name_cp LIKE @productName)`;
+      dataQuery += ` AND (A.good_name_ss LIKE @productName OR A.good_name_cp LIKE @productName)`;
       countRequest.input('productName', sql.NVarChar, `%${productName}%`);
       dataRequest.input('productName', sql.NVarChar, `%${productName}%`);
     }

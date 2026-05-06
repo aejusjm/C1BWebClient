@@ -117,6 +117,7 @@ router.get('/user-sales', async (req, res) => {
           ), 0) as cp_sales
         FROM tb_user U
         WHERE U.use_yn = 'Y'
+        AND U.user_type != N'가구매'
         ${userNameCondition}
       )
       SELECT 
