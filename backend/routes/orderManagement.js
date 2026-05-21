@@ -104,12 +104,18 @@ router.get('/orders/:userId', async (req, res) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx 
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx 
+        AND A.market_type = 'CP'
       LEFT OUTER JOIN tb_good_master C
         ON TRY_CAST(RIGHT(A.seller_cd, 7) AS INT) = C.seq 
-      WHERE B.user_id = @userId
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -156,8 +162,8 @@ router.get('/orders/:userId', async (req, res) => {
         CONVERT(VARCHAR(19), A.cancel_date, 120) as cancel_date,
         CONVERT(VARCHAR(19), A.return_date, 120) as return_date,
         CONVERT(VARCHAR(19), A.pccc_req_date, 120) as pccc_req_date,
-        B.store_name,
-        B.store_id,
+        COALESCE(B_SS.store_name, B_CP.store_name) as store_name,
+        COALESCE(B_SS.store_id, B_CP.vendorId) as store_id,
         C.SEQ AS C_SEQ,
         C.t_img_url,
         C.main_img_url,
@@ -172,15 +178,21 @@ router.get('/orders/:userId', async (req, res) => {
         ISNULL(A.delv_order_no, '') as delv_order_no,
         ISNULL(A.delv_price, 0) as delv_price
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx 
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx 
+        AND A.market_type = 'CP'
       LEFT OUTER JOIN tb_good_master C
         ON TRY_CAST(RIGHT(A.seller_cd, 7) AS INT) = C.seq 
       LEFT OUTER JOIN tb_good_user D
         ON D.gm_seq = C.seq 
         AND D.user_id = @userId
-      WHERE B.user_id = @userId
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
