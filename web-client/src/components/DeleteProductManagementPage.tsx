@@ -19,6 +19,7 @@ interface DeleteProduct {
   gm_seq: number
   good_name: string
   img_url: string
+  has_child_requests: number
 }
 
 /** DB del_type → 화면 라벨 + 뱃지 클래스 (즉시삭제 / 일괄삭제 구분) */
@@ -41,6 +42,9 @@ function DeleteProductManagementPage() {
   const [products, setProducts] = useState<DeleteProduct[]>([])
   const [loading, setLoading] = useState(false)
   
+  // 삭제유형 필터 상태
+  const [delTypeFilter, setDelTypeFilter] = useState<string>('')
+  
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
@@ -51,14 +55,18 @@ function DeleteProductManagementPage() {
   // 컴포넌트 마운트 시 목록 조회
   useEffect(() => {
     loadProducts()
-  }, [])
+  }, [delTypeFilter])
 
   // 삭제상품 목록 조회
   const loadProducts = async () => {
     try {
       setLoading(true)
-      console.log('🗑️ 삭제상품 목록 조회 시작, API URL:', API_URL)
-      const response = await fetch(API_URL)
+      let url = API_URL
+      if (delTypeFilter) {
+        url += `?delType=${encodeURIComponent(delTypeFilter)}`
+      }
+      console.log('🗑️ 삭제상품 목록 조회 시작, API URL:', url)
+      const response = await fetch(url)
       
       console.log('🗑️ 응답 상태:', response.status, response.statusText)
       
@@ -131,7 +139,8 @@ function DeleteProductManagementPage() {
       const result = await response.json()
       
       if (result.success) {
-        await showAlert('전체 삭제 요청이 처리되었습니다.')
+        const count = result.count || 0
+        await showAlert(`전체 삭제 요청이 처리되었습니다.\n추가된 삭제 요청: ${count}개`)
         loadProducts()
       } else {
         await showAlert(result.message || '전체 삭제 요청 중 오류가 발생했습니다.')
@@ -191,6 +200,20 @@ function DeleteProductManagementPage() {
       <div className="delete-product-table-container">
         <div className="table-header">
           <h3>삭제 요청 목록 ({products.length}개)</h3>
+          <div className="filter-section">
+            <label>삭제유형:</label>
+            <select 
+              value={delTypeFilter}
+              onChange={(e) => {
+                setDelTypeFilter(e.target.value)
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">전체</option>
+              <option value="즉시삭제">즉시삭제</option>
+              <option value="일괄삭제">일괄삭제</option>
+            </select>
+          </div>
           <div className="items-per-page">
             <label>페이지당 항목:</label>
             <select 
@@ -242,7 +265,7 @@ function DeleteProductManagementPage() {
                         {delBadge.label}
                       </span>
                     </td>
-                    <td className="reason-cell">{product.del_reason}</td>
+                    <td className="reason-cell" title={product.del_reason}>{product.del_reason}</td>
                     <td>
                       <img 
                         src={product.img_url} 
@@ -264,12 +287,23 @@ function DeleteProductManagementPage() {
                     <td>{formatDate(product.input_date)}</td>
                     <td>{formatDate(product.del_date)}</td>
                     <td>
-                      <button 
-                        className="delete-all-btn"
-                        onClick={() => handleDeleteAll(product.seq)}
-                      >
-                        전체삭제
-                      </button>
+                      {product.del_type === '일괄삭제' ? (
+                        <span style={{ color: '#999' }}>-</span>
+                      ) : product.del_type === '즉시삭제' && product.has_child_requests === 1 ? (
+                        <button 
+                          className="delete-all-btn completed"
+                          disabled
+                        >
+                          전체완료
+                        </button>
+                      ) : (
+                        <button 
+                          className="delete-all-btn"
+                          onClick={() => handleDeleteAll(product.seq)}
+                        >
+                          전체삭제
+                        </button>
+                      )}
                     </td>
                   </tr>
                   )

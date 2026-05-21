@@ -1210,13 +1210,13 @@ function OrderPage() {
                 />
               </div>
               <div className="purchase-form-group">
-                <label className="purchase-label">배대지 주문번호</label>
+                <label className="purchase-label">배대지 그룹번호</label>
                 <input
                   type="text"
                   className="purchase-input"
                   value={purchaseInfo.delv_order_no}
                   onChange={(e) => setPurchaseInfo({...purchaseInfo, delv_order_no: e.target.value})}
-                  placeholder="배대지 주문번호를 입력하세요"
+                  placeholder="배대지 그룹번호를 입력하세요"
                 />
               </div>
               <div className="purchase-form-group">

@@ -35,6 +35,7 @@ const deleteProductManagementRoutes = require('./routes/deleteProductManagement'
 const batchLogManagementRoutes = require('./routes/batchLogManagement');
 const fakePurchaseUserRoutes = require('./routes/fakePurchaseUser');
 const fakePurchaseScheduleRoutes = require('./routes/fakePurchaseSchedule');
+const fakePurchaseInfoRoutes = require('./routes/fakePurchaseInfo');
 app.use('/api/auth', authRoutes);
 app.use('/api/image', imageProxyRoutes);
 app.use('/api/standard-info', standardInfoRoutes);
@@ -57,6 +58,7 @@ app.use('/api/delete-products', deleteProductManagementRoutes);
 app.use('/api/batch-logs', batchLogManagementRoutes);
 app.use('/api/fake-purchase-users', fakePurchaseUserRoutes);
 app.use('/api/fake-purchase-schedule', fakePurchaseScheduleRoutes);
+app.use('/api/fake-purchase-info', fakePurchaseInfoRoutes);
 
 // 업로드된 파일 정적 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

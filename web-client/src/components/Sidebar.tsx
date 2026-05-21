@@ -251,6 +251,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">👥</span> 가구매 사용자관리
                 </li>
                 <li 
+                  className={activeMenu === 'fake-purchase-info' ? 'active' : ''}
+                  onClick={() => onMenuChange('fake-purchase-info')}
+                >
+                  <span className="submenu-icon">📋</span> 가구매 리스트
+                </li>
+                <li 
                   className={activeMenu === 'fake-purchase-product' ? 'active' : ''}
                   onClick={() => onMenuChange('fake-purchase-product')}
                 >

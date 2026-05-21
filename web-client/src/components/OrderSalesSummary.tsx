@@ -27,14 +27,12 @@ function OrderSalesSummary({
 }: OrderSalesSummaryProps) {
   const { userInfo } = useUser()
   const [totalSales, setTotalSales] = useState(0)
-  const [expectedProfit, setExpectedProfit] = useState(0)
 
   useEffect(() => {
     if (userInfo?.userId && selectedStores.length > 0) {
       loadSummary()
     } else {
       setTotalSales(0)
-      setExpectedProfit(0)
     }
   }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
 
@@ -57,18 +55,21 @@ function OrderSalesSummary({
       
       if (result.success) {
         setTotalSales(result.data?.total_sales || 0)
-        setExpectedProfit(result.data?.expected_profit || 0)
       }
     } catch (error) {
       console.error('주문&매출 현황 로드 오류:', error)
       setTotalSales(0)
-      setExpectedProfit(0)
     }
   }
 
   // 매출액을 만원 단위로 변환
   const formatSales = (amount: number) => {
     return Math.floor(amount / 10000).toLocaleString()
+  }
+
+  // 예상수익을 총 매출의 27%로 계산 (만원 단위)
+  const calculateExpectedProfit = () => {
+    return Math.floor((totalSales * 0.27) / 10000).toLocaleString()
   }
 
   return (
@@ -85,7 +86,7 @@ function OrderSalesSummary({
         <div className="summary-item">
           <span className="summary-label">예상수익</span>
           <span className="summary-value">
-            <strong>{formatSales(expectedProfit)}</strong> 만원
+            <strong>{calculateExpectedProfit()}</strong> 만원
           </span>
         </div>
       </div>

@@ -26,6 +26,7 @@ import BatchLogManagementPage from './components/BatchLogManagementPage'
 import FakePurchaseUserPage from './components/FakePurchaseUserPage'
 import FakePurchaseProductPage from './components/FakePurchaseProductPage'
 import FakePurchaseSchedulePage from './components/FakePurchaseSchedulePage'
+import FakePurchaseInfoPage from './components/FakePurchaseInfoPage'
 import { UserProvider } from './contexts/UserContext'
 import { FilterProvider } from './contexts/FilterContext'
 import { AlertProvider } from './contexts/AlertContext'
@@ -131,6 +132,7 @@ function App() {
               {activeMenu === 'products' && <ProductPage />}
               {activeMenu === 'orders' && <OrderPage />}
               {activeMenu === 'order-sales-stats' && <DailySalesStatsPage />}
+              {activeMenu === 'fake-purchase-info' && <FakePurchaseInfoPage />}
               {activeMenu === 'account' && <AccountPage />}
               {activeMenu === 'basic' && <BasicInfoPage />}
               {activeMenu === 'market' && <MarketPage />}

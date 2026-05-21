@@ -79,17 +79,23 @@ router.get('/user-sales', async (req, res) => {
           (SELECT COUNT(DISTINCT biz_idx) 
            FROM tb_user_market_ss 
            WHERE user_id = U.user_id AND use_yn = 'Y') as ss_store_count,
-          ISNULL((SELECT COUNT(*) 
+          ISNULL((SELECT COUNT(*)
            FROM tb_order_info A
-           WHERE A.user_id = U.user_id 
+           WHERE A.user_id = U.user_id
+           AND A.seller_cd NOT LIKE 'C[_]%'
+           AND A.order_status IS NOT NULL
+           AND A.order_status != ''
            AND A.market_type = 'SS'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
            ${dateCondition}
            ${SELLER_CD_LEN_FILTER}
           ), 0) as ss_order_count,
-          ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT)) 
+          ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT))
            FROM tb_order_info A
-           WHERE A.user_id = U.user_id 
+           WHERE A.user_id = U.user_id
+           AND A.seller_cd NOT LIKE 'C[_]%'
+           AND A.order_status IS NOT NULL
+           AND A.order_status != ''
            AND A.market_type = 'SS'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
            ${dateCondition}
@@ -99,17 +105,23 @@ router.get('/user-sales', async (req, res) => {
           (SELECT COUNT(DISTINCT biz_idx) 
            FROM tb_user_market_cp 
            WHERE user_id = U.user_id AND use_yn = 'Y') as cp_store_count,
-          ISNULL((SELECT COUNT(*) 
+          ISNULL((SELECT COUNT(*)
            FROM tb_order_info A
-           WHERE A.user_id = U.user_id 
+           WHERE A.user_id = U.user_id
+           AND A.seller_cd NOT LIKE 'C[_]%'
+           AND A.order_status IS NOT NULL
+           AND A.order_status != ''
            AND A.market_type = 'CP'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
            ${dateCondition}
            ${SELLER_CD_LEN_FILTER}
           ), 0) as cp_order_count,
-          ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT)) 
+          ISNULL((SELECT SUM(CAST(A.pay_amt AS BIGINT))
            FROM tb_order_info A
-           WHERE A.user_id = U.user_id 
+           WHERE A.user_id = U.user_id
+           AND A.seller_cd NOT LIKE 'C[_]%'
+           AND A.order_status IS NOT NULL
+           AND A.order_status != ''
            AND A.market_type = 'CP'
            AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
            ${dateCondition}
@@ -212,7 +224,7 @@ router.get('/daily-sales/:userId', async (req, res) => {
       FROM 
       (
         -- 스마트스토어 통계
-        SELECT 
+        SELECT
           CAST(A.pay_date AS date) AS pay_date,
           N'스마트스토어' AS market,
           B.store_name AS store,
@@ -222,19 +234,22 @@ router.get('/daily-sales/:userId', async (req, res) => {
           SUM(ISNULL(A.pre_amt, 0)) AS pre_amt
         FROM tb_order_info A
         INNER JOIN tb_user_market_ss B
-          ON A.user_id = B.user_id 
-          AND A.biz_idx = B.biz_idx 
+          ON A.user_id = B.user_id
+          AND A.biz_idx = B.biz_idx
         WHERE B.use_yn = 'Y'
           AND A.user_id = @userId
+          AND A.seller_cd NOT LIKE 'C[_]%'
+          AND A.order_status IS NOT NULL
+          AND A.order_status != ''
           AND A.market_type = 'SS'
           AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
           ${dateCondition}
-        GROUP BY CAST(A.pay_date AS date), B.store_name, B.biz_idx 
+        GROUP BY CAST(A.pay_date AS date), B.store_name, B.biz_idx
         
         UNION ALL   
         
         -- 쿠팡 통계
-        SELECT 
+        SELECT
           CAST(A.pay_date AS date) AS pay_date,
           N'쿠팡' AS market,
           B.store_name AS store,
@@ -244,14 +259,17 @@ router.get('/daily-sales/:userId', async (req, res) => {
           SUM(ISNULL(A.pre_amt, 0)) AS pre_amt
         FROM tb_order_info A
         INNER JOIN tb_user_market_cp B
-          ON A.user_id = B.user_id 
-          AND A.biz_idx = B.biz_idx 
-        WHERE B.use_yn = 'Y'    
+          ON A.user_id = B.user_id
+          AND A.biz_idx = B.biz_idx
+        WHERE B.use_yn = 'Y'
           AND A.user_id = @userId
+          AND A.seller_cd NOT LIKE 'C[_]%'
+          AND A.order_status IS NOT NULL
+          AND A.order_status != ''
           AND A.market_type = 'CP'
           AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
           ${dateCondition}
-        GROUP BY CAST(A.pay_date AS date), B.store_name, B.biz_idx 
+        GROUP BY CAST(A.pay_date AS date), B.store_name, B.biz_idx
       ) T
       ORDER BY pay_date, market, biz_idx
     `;

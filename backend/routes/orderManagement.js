@@ -110,6 +110,9 @@ router.get('/orders/:userId', async (req, res) => {
       LEFT OUTER JOIN tb_good_master C
         ON TRY_CAST(RIGHT(A.seller_cd, 7) AS INT) = C.seq 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
@@ -178,6 +181,9 @@ router.get('/orders/:userId', async (req, res) => {
         ON D.gm_seq = C.seq 
         AND D.user_id = @userId
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
@@ -296,6 +302,9 @@ router.get('/stats/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       ${dateCondition}
       ${marketCondition}
       ${storeCondition}
@@ -424,6 +433,9 @@ router.get('/dashboard/market-stats/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${storeCondition}
@@ -527,6 +539,9 @@ router.get('/dashboard/store-stats/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${marketCondition}
@@ -627,6 +642,9 @@ router.get('/dashboard/order-trend/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${marketCondition}
@@ -730,6 +748,9 @@ router.get('/dashboard/sales-trend/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${marketCondition}
@@ -833,6 +854,9 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
         ON A.user_id = B.user_id 
         AND A.biz_idx = B.biz_idx 
       WHERE B.user_id = @userId
+      AND A.seller_cd NOT LIKE 'C[_]%'
+      AND A.order_status IS NOT NULL
+      AND A.order_status != ''
       AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
       ${dateCondition}
       ${marketCondition}
