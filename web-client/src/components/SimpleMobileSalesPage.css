@@ -1,0 +1,342 @@
+/* 심플 모바일 버전 사용자별 매출 페이지 */
+.simple-mobile-sales-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 헤더 */
+.simple-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  border-radius: 12px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.simple-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.main-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+
+.main-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* 필터 섹션 */
+.simple-mobile-sales-page .simple-filter-section {
+  background: white !important;
+  padding: 8px !important;
+  border-radius: 8px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.simple-mobile-sales-page .date-filters {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+.simple-mobile-sales-page .date-filters button {
+  padding: 4px 6px !important;
+  border: 1px solid #ddd !important;
+  background: white !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s !important;
+  color: #333 !important;
+}
+
+.simple-mobile-sales-page .date-filters button:nth-child(1),
+.simple-mobile-sales-page .date-filters button:nth-child(2) {
+  background: #e3f2fd !important;
+  border-color: #90caf9 !important;
+}
+
+.simple-mobile-sales-page .date-filters button:nth-child(3),
+.simple-mobile-sales-page .date-filters button:nth-child(4) {
+  background: #e8f5e9 !important;
+  border-color: #a5d6a7 !important;
+}
+
+.simple-mobile-sales-page .date-filters button:nth-child(5),
+.simple-mobile-sales-page .date-filters button:nth-child(6) {
+  background: #f3e5f5 !important;
+  border-color: #ce93d8 !important;
+}
+
+.simple-mobile-sales-page .date-filters button:hover {
+  opacity: 0.8 !important;
+  transform: translateY(-1px) !important;
+}
+
+.simple-mobile-sales-page .date-filters button.active {
+  background: #1976d2 !important;
+  color: white !important;
+  border-color: #1976d2 !important;
+  font-weight: 700 !important;
+}
+
+.simple-mobile-sales-page .filter-info {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px;
+  background: #fff3e0;
+  border-radius: 6px;
+  border: 1px solid #ffb74d;
+}
+
+/* 통계 컨테이너 */
+.simple-stats-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+/* 로딩 및 빈 데이터 메시지 */
+.simple-mobile-sales-page .loading-message,
+.simple-mobile-sales-page .no-data-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 16px;
+}
+
+/* 통계 테이블 */
+.simple-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 800px;
+}
+
+.simple-stats-table thead {
+  background: #f8f9fa;
+}
+
+.simple-stats-table th {
+  padding: 14px 10px;
+  text-align: center;
+  font-weight: 700;
+  color: #333;
+  border: 1px solid #dee2e6;
+  background: #e9ecef;
+  white-space: nowrap;
+}
+
+.simple-stats-table th.highlight-header {
+  background: #fff9e6;
+  color: #f57c00;
+  font-weight: 800;
+}
+
+.simple-stats-table th.sub-header-ss {
+  background: #e3f2fd;
+  color: #1976d2;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.simple-stats-table th.sub-header-cp {
+  background: #fff3e0;
+  color: #f57c00;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.simple-stats-table tbody tr {
+  transition: background 0.2s;
+}
+
+.simple-stats-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.simple-stats-table tbody td {
+  padding: 12px 10px;
+  border: 1px solid #dee2e6;
+  color: #333;
+}
+
+/* 텍스트 정렬 */
+.simple-stats-table td.center {
+  text-align: center;
+}
+
+.simple-stats-table td.right {
+  text-align: right;
+}
+
+/* 사용자명 */
+.simple-stats-table td.username {
+  font-weight: 700;
+  color: #1976d2;
+}
+
+/* 셀 배경색 */
+.simple-stats-table td.cell-ss {
+  background: #f0f8ff;
+  font-weight: 500;
+}
+
+.simple-stats-table td.cell-cp {
+  background: #fffbf5;
+  font-weight: 500;
+}
+
+/* 분할 셀 (스마트스토어/쿠팡) */
+.simple-mobile-sales-page .split-cell {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  gap: 8px;
+}
+
+.simple-mobile-sales-page .split-cell + .split-cell {
+  border-top: 1px solid #e0e0e0;
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.simple-mobile-sales-page .market-label {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  min-width: 45px;
+  text-align: center;
+}
+
+.simple-mobile-sales-page .market-label.ss {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.simple-mobile-sales-page .market-label.cp {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+/* 하이라이트 (총계 컬럼) */
+.simple-stats-table td.highlight {
+  background: #fff9e6;
+  font-weight: 800;
+  color: #f57c00;
+  font-size: 15px;
+}
+
+/* 푸터 */
+.simple-footer {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.main-btn-footer {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  border: none;
+  color: white;
+  padding: 14px 40px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.main-btn-footer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .simple-mobile-sales-page {
+    padding: 12px;
+  }
+
+  .simple-mobile-sales-page .simple-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .simple-mobile-sales-page .simple-header h1 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .simple-mobile-sales-page .main-btn {
+    width: 100%;
+  }
+
+  .simple-mobile-sales-page .date-filters {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .simple-mobile-sales-page .simple-stats-table {
+    font-size: 12px;
+    min-width: 600px;
+  }
+
+  .simple-mobile-sales-page .simple-stats-table th,
+  .simple-mobile-sales-page .simple-stats-table td {
+    padding: 8px 6px;
+  }
+
+  .simple-mobile-sales-page .split-cell {
+    font-size: 11px;
+  }
+
+  .simple-mobile-sales-page .market-label {
+    font-size: 10px;
+    min-width: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .simple-mobile-sales-page .simple-header h1 {
+    font-size: 18px;
+  }
+
+  .simple-mobile-sales-page .date-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .simple-mobile-sales-page .simple-stats-table {
+    font-size: 11px;
+  }
+}

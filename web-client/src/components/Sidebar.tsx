@@ -229,6 +229,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">💰</span> 사용자별 매출
                 </li>
                 <li 
+                  className={activeMenu === 'mobile-sales-stats' ? 'active' : ''}
+                  onClick={() => onMenuChange('mobile-sales-stats')}
+                >
+                  <span className="submenu-icon">📱</span> 사용자별 매출(모바일)
+                </li>
+                <li 
                   className={activeMenu === 'upload-product-stats' ? 'active' : ''}
                   onClick={() => onMenuChange('upload-product-stats')}
                 >

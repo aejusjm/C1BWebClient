@@ -27,6 +27,7 @@ import FakePurchaseUserPage from './components/FakePurchaseUserPage'
 import FakePurchaseProductPage from './components/FakePurchaseProductPage'
 import FakePurchaseSchedulePage from './components/FakePurchaseSchedulePage'
 import FakePurchaseInfoPage from './components/FakePurchaseInfoPage'
+import SimpleMobileSalesPage from './components/SimpleMobileSalesPage'
 import { UserProvider } from './contexts/UserContext'
 import { FilterProvider } from './contexts/FilterContext'
 import { AlertProvider } from './contexts/AlertContext'
@@ -109,6 +110,15 @@ function App() {
     return (
       <AlertProvider>
         <LoginPage onLogin={handleLogin} />
+      </AlertProvider>
+    )
+  }
+
+  // 사용자별 매출(모바일) 메뉴 선택 시 사이드바 없이 SimpleMobileSalesPage 표시
+  if (activeMenu === 'mobile-sales-stats') {
+    return (
+      <AlertProvider>
+        <SimpleMobileSalesPage onNavigate={setActiveMenu} />
       </AlertProvider>
     )
   }
