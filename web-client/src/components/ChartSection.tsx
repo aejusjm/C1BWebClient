@@ -14,7 +14,8 @@ interface ChartSectionProps {
   dateFilter?: string
   smartStore?: boolean
   coupang?: boolean
-  selectedStores?: number[]
+  selectedStores?: string[]
+  stores?: Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>
   useCustomDate?: boolean
   startDate?: string
   endDate?: string
@@ -27,6 +28,7 @@ function ChartSection({
   smartStore = true,
   coupang = true,
   selectedStores = [],
+  stores = [],
   useCustomDate = false,
   startDate = '',
   endDate = ''
@@ -49,35 +51,43 @@ function ChartSection({
 
   // 마켓별 통계 로드
   useEffect(() => {
-    if (userInfo?.userId && selectedStores.length > 0) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadMarketStats()
     }
-  }, [dateFilter, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   // 스토어별 통계 로드
   useEffect(() => {
-    if (userInfo?.userId && selectedStores.length > 0) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadStoreStats()
     }
-  }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, smartStore, coupang, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   // 주문추이 로드
   useEffect(() => {
-    if (userInfo?.userId && selectedStores.length > 0) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadOrderTrend()
     }
-  }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, smartStore, coupang, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   // 매출추이 로드
   useEffect(() => {
-    if (userInfo?.userId && selectedStores.length > 0) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadSalesTrend()
     }
-  }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, smartStore, coupang, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   const loadMarketStats = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/dashboard/market-stats/${userInfo.userId}?dateFilter=${dateFilter}&stores=${storesParam}`
       
       // 사용자 정의 날짜 범위가 설정된 경우
@@ -108,7 +118,15 @@ function ChartSection({
 
   const loadStoreStats = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/dashboard/store-stats/${userInfo.userId}?dateFilter=${dateFilter}&smartStore=${smartStore}&coupang=${coupang}&stores=${storesParam}`
       
       // 사용자 정의 날짜 범위가 설정된 경우
@@ -139,7 +157,15 @@ function ChartSection({
 
   const loadOrderTrend = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/dashboard/order-trend/${userInfo.userId}?dateFilter=${dateFilter}&smartStore=${smartStore}&coupang=${coupang}&stores=${storesParam}`
       
       // 사용자 정의 날짜 범위가 설정된 경우
@@ -170,7 +196,15 @@ function ChartSection({
 
   const loadSalesTrend = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/dashboard/sales-trend/${userInfo.userId}?dateFilter=${dateFilter}&smartStore=${smartStore}&coupang=${coupang}&stores=${storesParam}`
       
       // 사용자 정의 날짜 범위가 설정된 경우

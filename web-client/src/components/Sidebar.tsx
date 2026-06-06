@@ -1,5 +1,6 @@
 // 좌측 사이드바 컴포넌트 - 로고, 사용자 정보, 메뉴 네비게이션
 import './Sidebar.css'
+import { useAlert } from '../contexts/AlertContext'
 
 interface UserInfo {
   userId: string
@@ -16,6 +17,8 @@ interface SidebarProps {
 }
 
 function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps) {
+  const { showAlert } = useAlert()
+  
   // 관리자 여부 확인
   const isAdmin = userInfo.userType === '관리자'
 
@@ -56,6 +59,14 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
   }
 
   const { dateStr, daysLeft } = getExpiryInfo()
+  
+  // 만료일 경고 클릭 핸들러
+  const handleExpiryWarningClick = () => {
+    if (daysLeft !== null) {
+      showAlert(`사용기간이 ${daysLeft}일 남았습니다. 구독을 연장하세요`)
+    }
+  }
+  
   return (
     <aside className="sidebar">
       {/* 로고 영역 */}
@@ -65,18 +76,37 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
 
       {/* 사용자 정보 영역 */}
       <div className="user-info">
-        <div 
-          className="user-name" 
+        <div className="user-name" 
           onClick={() => onMenuChange('account')}
           style={{ cursor: 'pointer' }}
         >
           {userInfo.userName}({userInfo.userId})
         </div>
-        <div className="user-date">
-          만료일: {dateStr}
-          {daysLeft !== null && (
-            <span>
-              {daysLeft > 0 ? ` (${daysLeft}일 남음)` : daysLeft === 0 ? ' (오늘 만료)' : ' (만료됨)'}
+        <div 
+          className="user-date"
+          style={{
+            color: daysLeft !== null && daysLeft < 10 && daysLeft >= 0 ? '#ef5350' : '#666',
+            fontWeight: daysLeft !== null && daysLeft < 10 && daysLeft >= 0 ? '600' : 'normal',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
+          }}
+        >
+          <span>
+            만료일: {dateStr}
+            {daysLeft !== null && (
+              <span>
+                {daysLeft > 0 ? ` (${daysLeft}일 남음)` : daysLeft === 0 ? ' (오늘 만료)' : ' (만료됨)'}
+              </span>
+            )}
+          </span>
+          {daysLeft !== null && daysLeft < 10 && daysLeft >= 0 && (
+            <span 
+              className="expiry-warning-icon"
+              onClick={handleExpiryWarningClick}
+            >
+              ⚠️
             </span>
           )}
         </div>

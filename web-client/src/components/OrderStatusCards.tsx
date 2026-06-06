@@ -11,14 +11,15 @@ interface OrderStatusCardsProps {
   dateFilter: string
   smartStore: boolean
   coupang: boolean
-  selectedStores: number[]
+  selectedStores: string[]
+  stores: Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>
   onNavigate?: (menu: string) => void
   useCustomDate?: boolean
   startDate?: string
   endDate?: string
 }
 
-function OrderStatusCards({ dateFilter, smartStore, coupang, selectedStores, onNavigate, useCustomDate = false, startDate = '', endDate = '' }: OrderStatusCardsProps) {
+function OrderStatusCards({ dateFilter, smartStore, coupang, selectedStores, stores, onNavigate, useCustomDate = false, startDate = '', endDate = '' }: OrderStatusCardsProps) {
   const { navigateToOrdersWithFilter } = useFilter()
   const { userInfo } = useUser()
   const [stats, setStats] = useState({
@@ -29,14 +30,22 @@ function OrderStatusCards({ dateFilter, smartStore, coupang, selectedStores, onN
   })
 
   useEffect(() => {
-    if (userInfo?.userId) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadStats()
     }
-  }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, smartStore, coupang, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   const loadStats = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/stats/${userInfo.userId}?dateFilter=${dateFilter}&smartStore=${smartStore}&coupang=${coupang}&stores=${storesParam}`
       
       // 사용자 정의 날짜 범위가 설정된 경우

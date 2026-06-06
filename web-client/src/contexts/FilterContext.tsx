@@ -5,7 +5,7 @@ interface FilterContextType {
   dateFilter: string
   smartStore: boolean
   coupang: boolean
-  selectedStores: number[]
+  selectedStores: string[]  // "SS-1", "CP-1" 형식으로 저장
   statusFilter: string | null
   useCustomDate: boolean
   startDate: string
@@ -13,7 +13,7 @@ interface FilterContextType {
   setDateFilter: (filter: string) => void
   setSmartStore: (value: boolean) => void
   setCoupang: (value: boolean) => void
-  setSelectedStores: (stores: number[]) => void
+  setSelectedStores: (stores: string[]) => void
   setStatusFilter: (status: string | null) => void
   setUseCustomDate: (value: boolean) => void
   setStartDate: (date: string) => void
@@ -27,7 +27,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [dateFilter, setDateFilter] = useState('today')
   const [smartStore, setSmartStore] = useState(true)
   const [coupang, setCoupang] = useState(true)
-  const [selectedStores, setSelectedStores] = useState<number[]>([])
+  const [selectedStores, setSelectedStores] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [useCustomDate, setUseCustomDate] = useState(false)
   const [startDate, setStartDate] = useState('')

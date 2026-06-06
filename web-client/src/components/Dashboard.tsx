@@ -43,7 +43,9 @@ function Dashboard({ onNavigate }: DashboardProps) {
   } = useFilter()
   
   // 스토어 목록
-  const [stores, setStores] = useState<Array<{user_id: string, biz_idx: number, store_name: string}>>([])
+  const [stores, setStores] = useState<Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>>([])
+  // 스토어 드롭다운 상태
+  const [showStoreDropdown, setShowStoreDropdown] = useState(false)
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
   // 모달 내 임시 날짜
@@ -63,6 +65,21 @@ function Dashboard({ onNavigate }: DashboardProps) {
     }
   }, [userInfo?.userId])
 
+  // 스토어 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.store-dropdown-container')) {
+        setShowStoreDropdown(false)
+      }
+    }
+
+    if (showStoreDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showStoreDropdown])
+
   // 스토어 목록 로드
   const loadStores = async () => {
     try {
@@ -80,7 +97,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
         setStores(result.data)
         // FilterContext의 selectedStores가 비어있을 때만 초기화
         if (selectedStores.length === 0) {
-          setSelectedStores(result.data.map((s: any) => s.biz_idx))
+          setSelectedStores(result.data.map((s: any) => `${s.market_type}-${s.biz_idx}`))
         }
       }
     } catch (error) {
@@ -156,11 +173,40 @@ function Dashboard({ onNavigate }: DashboardProps) {
   }
 
   // 스토어 선택 변경
-  const handleStoreChange = (bizIdx: number, checked: boolean) => {
+  const handleStoreChange = (storeId: string, checked: boolean) => {
     if (checked) {
-      setSelectedStores([...selectedStores, bizIdx])
+      setSelectedStores([...selectedStores, storeId])
     } else {
-      setSelectedStores(selectedStores.filter(id => id !== bizIdx))
+      setSelectedStores(selectedStores.filter(id => id !== storeId))
+    }
+  }
+
+  // 마켓 선택 변경
+  const handleMarketChange = (market: 'smartStore' | 'coupang', checked: boolean) => {
+    if (market === 'smartStore') {
+      setSmartStore(checked)
+      // 스마트스토어를 체크하면 스마트스토어의 모든 스토어 선택, 해제하면 모두 해제
+      const ssStoreIds = stores.filter(s => s.market_type === 'SS').map(s => `SS-${s.biz_idx}`)
+      if (checked) {
+        // 기존 선택된 스토어에 스마트스토어 스토어들 추가 (중복 제거)
+        const newSelected = [...selectedStores, ...ssStoreIds.filter(id => !selectedStores.includes(id))]
+        setSelectedStores(newSelected)
+      } else {
+        // 스마트스토어 스토어들만 제거
+        setSelectedStores(selectedStores.filter(id => !ssStoreIds.includes(id)))
+      }
+    } else {
+      setCoupang(checked)
+      // 쿠팡을 체크하면 쿠팡의 모든 스토어 선택, 해제하면 모두 해제
+      const cpStoreIds = stores.filter(s => s.market_type === 'CP').map(s => `CP-${s.biz_idx}`)
+      if (checked) {
+        // 기존 선택된 스토어에 쿠팡 스토어들 추가 (중복 제거)
+        const newSelected = [...selectedStores, ...cpStoreIds.filter(id => !selectedStores.includes(id))]
+        setSelectedStores(newSelected)
+      } else {
+        // 쿠팡 스토어들만 제거
+        setSelectedStores(selectedStores.filter(id => !cpStoreIds.includes(id)))
+      }
     }
   }
 
@@ -275,7 +321,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
               <input 
                 type="checkbox" 
                 checked={smartStore}
-                onChange={(e) => setSmartStore(e.target.checked)}
+                onChange={(e) => handleMarketChange('smartStore', e.target.checked)}
               />
               <span className="checkbox-text">스마트스토어</span>
             </label>
@@ -283,7 +329,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
               <input 
                 type="checkbox" 
                 checked={coupang}
-                onChange={(e) => setCoupang(e.target.checked)}
+                onChange={(e) => handleMarketChange('coupang', e.target.checked)}
               />
               <span className="checkbox-text">쿠팡</span>
             </label>
@@ -293,19 +339,75 @@ function Dashboard({ onNavigate }: DashboardProps) {
         <div className="filter-divider"></div>
         
         {/* 스토어 선택 */}
-        <div className="filter-section">
+        <div className="filter-section" style={{ paddingTop: '2px', paddingBottom: '2px' }}>
           <span className="filter-label">스토어:</span>
-          <div className="market-checkboxes">
-            {stores.map((store) => (
-              <label key={store.biz_idx} className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={selectedStores.includes(store.biz_idx)}
-                  onChange={(e) => handleStoreChange(store.biz_idx, e.target.checked)}
-                />
-                <span className="checkbox-text">{store.store_name}</span>
-              </label>
-            ))}
+          <div className="store-dropdown-container">
+            {stores.length > 0 ? (
+              <>
+                <button 
+                  className="store-dropdown-button"
+                  onClick={() => setShowStoreDropdown(!showStoreDropdown)}
+                  type="button"
+                >
+                  <span className="store-dropdown-text">
+                    {selectedStores.length > 0 
+                      ? `${selectedStores.length}개 선택됨` 
+                      : '스토어 선택'}
+                  </span>
+                  <span className={`store-dropdown-arrow ${showStoreDropdown ? 'open' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+                
+                {showStoreDropdown && (
+                  <div className="store-dropdown-menu">
+                    {stores
+                      .filter(store => {
+                        // 마켓 필터에 따라 스토어 필터링
+                        if (store.market_type === 'SS' && !smartStore) return false
+                        if (store.market_type === 'CP' && !coupang) return false
+                        return true
+                      })
+                      .sort((a, b) => {
+                        // 먼저 market_type으로 정렬 (SS가 먼저)
+                        if (a.market_type !== b.market_type) {
+                          return a.market_type === 'SS' ? -1 : 1
+                        }
+                        // 같은 market_type 내에서는 biz_idx로 정렬
+                        return a.biz_idx - b.biz_idx
+                      })
+                      .map((store) => {
+                        const storeId = `${store.market_type}-${store.biz_idx}`
+                        return (
+                          <label 
+                            key={storeId} 
+                            className="store-dropdown-item"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStores.includes(storeId)}
+                              onChange={(e) => {
+                                handleStoreChange(storeId, e.target.checked)
+                              }}
+                            />
+                            <span className="store-item-text">
+                              {store.store_name}
+                              <span className={`store-item-badge ${store.market_type === 'SS' ? 'badge-ss' : 'badge-cp'}`}>
+                                {store.market_type === 'SS' ? '스스' : '쿠팡'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })
+                    }
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="no-stores-message">
+                등록된 스토어가 없습니다.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -317,6 +419,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
           smartStore={smartStore}
           coupang={coupang}
           selectedStores={selectedStores}
+          stores={stores}
           onNavigate={onNavigate}
           useCustomDate={useCustomDate}
           startDate={startDate}
@@ -328,6 +431,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
           smartStore={smartStore}
           coupang={coupang}
           selectedStores={selectedStores}
+          stores={stores}
           useCustomDate={useCustomDate}
           startDate={startDate}
           endDate={endDate}
@@ -337,6 +441,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
           smartStore={smartStore}
           coupang={coupang}
           selectedStores={selectedStores}
+          stores={stores}
           useCustomDate={useCustomDate}
           startDate={startDate}
           endDate={endDate}
@@ -350,6 +455,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
         smartStore={smartStore}
         coupang={coupang}
         selectedStores={selectedStores}
+        stores={stores}
         useCustomDate={useCustomDate}
         startDate={startDate}
         endDate={endDate}

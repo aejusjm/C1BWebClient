@@ -23,6 +23,7 @@ interface Order {
   product_name: string
   order_status: string
   opt_info: string
+  order_cnt: number
   seller_cd: string
   org_seller_cd: string
   pay_amt: number
@@ -75,12 +76,14 @@ function OrderPage() {
   } = useFilter()
   
   // 스토어 목록
-  const [stores, setStores] = useState<Array<{user_id: string, biz_idx: number, store_name: string}>>([])
+  const [stores, setStores] = useState<Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>>([])
   /** 스토어 API 조회 완료 여부 (미완료 시 주문 로드 대기 — initialLoading 해제용) */
   const [storesFetched, setStoresFetched] = useState(false)
   // 이미지 확대 모달
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string>('')
+  // 스토어 드롭다운 상태
+  const [showStoreDropdown, setShowStoreDropdown] = useState(false)
   // 사용자 정의 날짜 범위
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -134,6 +137,21 @@ function OrderPage() {
       loadStores()
     }
   }, [userInfo?.userId])
+
+  // 스토어 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.store-dropdown-container')) {
+        setShowStoreDropdown(false)
+      }
+    }
+
+    if (showStoreDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showStoreDropdown])
 
   // 컴포넌트 마운트 시 주문 목록 및 통계 로드
   useEffect(() => {
@@ -217,12 +235,32 @@ function OrderPage() {
     setCurrentPage(1)
   }
 
-  // 마켓 필터 변경 시 첫 페이지로 이동
+  // 마켓 필터 변경 시 첫 페이지로 이동 및 해당 마켓의 모든 스토어 선택/해제
   const handleMarketChange = (market: 'smartStore' | 'coupang', checked: boolean) => {
     if (market === 'smartStore') {
       setSmartStore(checked)
+      // 스마트스토어를 체크하면 스마트스토어의 모든 스토어 선택, 해제하면 모두 해제
+      const ssStoreIds = stores.filter(s => s.market_type === 'SS').map(s => `SS-${s.biz_idx}`)
+      if (checked) {
+        // 기존 선택된 스토어에 스마트스토어 스토어들 추가 (중복 제거)
+        const newSelected = [...selectedStores, ...ssStoreIds.filter(id => !selectedStores.includes(id))]
+        setSelectedStores(newSelected)
+      } else {
+        // 스마트스토어 스토어들만 제거
+        setSelectedStores(selectedStores.filter(id => !ssStoreIds.includes(id)))
+      }
     } else {
       setCoupang(checked)
+      // 쿠팡을 체크하면 쿠팡의 모든 스토어 선택, 해제하면 모두 해제
+      const cpStoreIds = stores.filter(s => s.market_type === 'CP').map(s => `CP-${s.biz_idx}`)
+      if (checked) {
+        // 기존 선택된 스토어에 쿠팡 스토어들 추가 (중복 제거)
+        const newSelected = [...selectedStores, ...cpStoreIds.filter(id => !selectedStores.includes(id))]
+        setSelectedStores(newSelected)
+      } else {
+        // 쿠팡 스토어들만 제거
+        setSelectedStores(selectedStores.filter(id => !cpStoreIds.includes(id)))
+      }
     }
     setCurrentPage(1)
   }
@@ -249,11 +287,19 @@ function OrderPage() {
       if (result.success) {
         console.log('받은 스토어 개수:', result.data?.length)
         setStores(result.data || [])
-        // FilterContext의 selectedStores가 비어있을 때만 초기화
+        // FilterContext의 selectedStores가 비어있을 때만 초기화 (마켓 필터에 따라)
         if (selectedStores.length === 0) {
-          const bizIdxList = (result.data || []).map((s: any) => s.biz_idx)
-          console.log('선택된 스토어 biz_idx:', bizIdxList)
-          setSelectedStores(bizIdxList)
+          const allStores = result.data || []
+          const storeIds = allStores
+            .filter((s: any) => {
+              // 체크된 마켓의 스토어만 선택
+              if (s.market_type === 'SS' && smartStore) return true
+              if (s.market_type === 'CP' && coupang) return true
+              return false
+            })
+            .map((s: any) => `${s.market_type}-${s.biz_idx}`)
+          console.log('선택된 스토어 ID:', storeIds)
+          setSelectedStores(storeIds)
         }
       } else {
         console.error('스토어 API 응답 실패:', result.message)
@@ -269,11 +315,11 @@ function OrderPage() {
   }
 
   // 스토어 선택 변경
-  const handleStoreChange = (bizIdx: number, checked: boolean) => {
+  const handleStoreChange = (storeId: string, checked: boolean) => {
     if (checked) {
-      setSelectedStores([...selectedStores, bizIdx])
+      setSelectedStores([...selectedStores, storeId])
     } else {
-      setSelectedStores(selectedStores.filter(id => id !== bizIdx))
+      setSelectedStores(selectedStores.filter(id => id !== storeId))
     }
     setCurrentPage(1)
   }
@@ -295,7 +341,15 @@ function OrderPage() {
   // 주문 통계 로드
   const loadStats = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       
       // 사용자 정의 날짜 사용 여부에 따라 URL 구성
       let dateParams = `dateFilter=${dateFilter}`
@@ -336,7 +390,15 @@ function OrderPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       const statusParam = statusFilter ? `&status=${statusFilter}` : ''
       
       // 사용자 정의 날짜 사용 여부에 따라 URL 구성
@@ -801,24 +863,74 @@ function OrderPage() {
         <div className="filter-divider"></div>
         
         {/* 스토어 선택 */}
-        <div className="filter-section">
+        <div className="filter-section" style={{ paddingTop: '2px', paddingBottom: '2px' }}>
           <span className="filter-label">스토어:</span>
-          <div className="market-checkboxes">
+          <div className="store-dropdown-container">
             {stores.length > 0 ? (
-              stores.map((store) => (
-                <label key={store.biz_idx} className="checkbox-label">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedStores.includes(store.biz_idx)}
-                    onChange={(e) => handleStoreChange(store.biz_idx, e.target.checked)}
-                  />
-                  <span className="checkbox-text">{store.store_name}</span>
-                </label>
-              ))
+              <>
+                <button 
+                  className="store-dropdown-button"
+                  onClick={() => setShowStoreDropdown(!showStoreDropdown)}
+                  type="button"
+                >
+                  <span className="store-dropdown-text">
+                    {selectedStores.length > 0 
+                      ? `${selectedStores.length}개 선택됨` 
+                      : '스토어 선택'}
+                  </span>
+                  <span className={`store-dropdown-arrow ${showStoreDropdown ? 'open' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+                
+                {showStoreDropdown && (
+                  <div className="store-dropdown-menu">
+                    {stores
+                      .filter(store => {
+                        // 마켓 필터에 따라 스토어 필터링
+                        if (store.market_type === 'SS' && !smartStore) return false
+                        if (store.market_type === 'CP' && !coupang) return false
+                        return true
+                      })
+                      .sort((a, b) => {
+                        // 먼저 market_type으로 정렬 (SS가 먼저)
+                        if (a.market_type !== b.market_type) {
+                          return a.market_type === 'SS' ? -1 : 1
+                        }
+                        // 같은 market_type 내에서는 biz_idx로 정렬
+                        return a.biz_idx - b.biz_idx
+                      })
+                      .map((store) => {
+                        const storeId = `${store.market_type}-${store.biz_idx}`
+                        return (
+                          <label 
+                            key={storeId} 
+                            className="store-dropdown-item"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStores.includes(storeId)}
+                              onChange={(e) => {
+                                handleStoreChange(storeId, e.target.checked)
+                              }}
+                            />
+                            <span className="store-item-text">
+                              {store.store_name}
+                              <span className={`store-item-badge ${store.market_type === 'SS' ? 'badge-ss' : 'badge-cp'}`}>
+                                {store.market_type === 'SS' ? '스스' : '쿠팡'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })
+                    }
+                  </div>
+                )}
+              </>
             ) : (
-              <span className="checkbox-text" style={{ color: '#999' }}>
+              <div className="no-stores-message">
                 등록된 스토어가 없습니다. 마켓연동에서 스토어를 등록해주세요.
-              </span>
+              </div>
             )}
           </div>
         </div>
@@ -910,10 +1022,13 @@ function OrderPage() {
                 <th>이미지</th>
                 <th>상품명</th>
                 <th className="opt-info-header">옵션명</th>
+                <th>주문건수</th>
                 <th>결제일</th>
                 <th>결제금액</th>
                 <th className="orderer-header">주문자</th>
-                <th className="phone-header">연락처</th>
+                <th className="phone-header">주문자 연락처</th>
+                <th>받는사람</th>
+                <th>받는사람 연락처</th>
                 <th>주소</th>
                 <th>통관번호</th>
                 <th>통관번호요청</th>
@@ -973,10 +1088,13 @@ function OrderPage() {
                     )}
                   </td>
                   <td className="opt-info-cell">{order.opt_info || '-'}</td>
+                  <td className="order-cnt-cell">{order.order_cnt || 1}</td>
                   <td className="date-cell">{formatDate(order.pay_date)}</td>
                   <td className="amount-cell">{order.pay_amt ? Number(order.pay_amt).toLocaleString() : '0'}원</td>
                   <td className="orderer-cell">{order.ordrr_name}</td>
                   <td className="phone-cell">{order.ordrr_tel}</td>
+                  <td className="receiver-name-cell">{order.recvr_name || '-'}</td>
+                  <td className="receiver-tel-cell">{order.recvr_tel || '-'}</td>
                   <td className="address-cell">{(order.recvr_addr ?? '').trim() || '-'}</td>
                   <td>
                     {order.PCCC || '-'}

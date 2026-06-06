@@ -68,9 +68,11 @@ router.get('/orders/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         // 빈 배열인 경우 (모두 체크 해제) - 결과 없음
         storeCondition = 'AND 1 = 0';
@@ -144,6 +146,7 @@ router.get('/orders/:userId', async (req, res) => {
         A.product_name,
         A.order_status,
         A.opt_info,
+        A.order_cnt,
         A.seller_cd,
         A.org_seller_cd,
         A.pay_amt,
@@ -288,9 +291,11 @@ router.get('/stats/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         // 빈 배열인 경우 (모두 체크 해제) - 결과 없음
         storeCondition = 'AND 1 = 0';
@@ -310,10 +315,16 @@ router.get('/stats/:userId', async (req, res) => {
         SUM(CASE WHEN A.order_status = 'CANCELED' THEN 1 ELSE 0 END) as canceled,
         SUM(CASE WHEN A.order_status = 'RETURNED' THEN 1 ELSE 0 END) as returned
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -354,10 +365,22 @@ router.get('/stores/:userId', async (req, res) => {
       SELECT 
         user_id,
         biz_idx,
-        CONVERT(VARCHAR(50), store_name) as store_name
+        CONVERT(VARCHAR(50), store_name) as store_name,
+        'SS' as market_type
       FROM tb_user_market_ss
       WHERE user_id = @userId
-      ORDER BY biz_idx
+      
+      UNION ALL
+      
+      SELECT 
+        user_id,
+        biz_idx,
+        CONVERT(VARCHAR(50), store_name) as store_name,
+        'CP' as market_type
+      FROM tb_user_market_cp
+      WHERE user_id = @userId
+      
+      ORDER BY market_type, biz_idx
     `;
     
     const storesResult = await pool.request()
@@ -424,9 +447,11 @@ router.get('/dashboard/market-stats/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         storeCondition = 'AND 1 = 0';
       }
@@ -441,10 +466,16 @@ router.get('/dashboard/market-stats/:userId', async (req, res) => {
         COUNT(*) as order_count,
         SUM(CAST(A.pay_amt AS BIGINT)) as total_amount
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -529,9 +560,11 @@ router.get('/dashboard/store-stats/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         storeCondition = 'AND 1 = 0';
       }
@@ -543,14 +576,20 @@ router.get('/dashboard/store-stats/:userId', async (req, res) => {
     const storeStatsQuery = `
       SELECT 
         A.biz_idx,
-        CONVERT(VARCHAR(50), B.store_name) as store_name,
+        CONVERT(VARCHAR(50), COALESCE(B_SS.store_name, B_CP.store_name)) as store_name,
         COUNT(*) as order_count,
         SUM(CAST(A.pay_amt AS BIGINT)) as total_amount
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -559,7 +598,7 @@ router.get('/dashboard/store-stats/:userId', async (req, res) => {
       ${marketCondition}
       ${storeCondition}
       ${SELLER_CD_LEN_FILTER}
-      GROUP BY A.biz_idx, B.store_name
+      GROUP BY A.biz_idx, COALESCE(B_SS.store_name, B_CP.store_name)
       ORDER BY A.biz_idx
     `;
     
@@ -633,9 +672,11 @@ router.get('/dashboard/order-trend/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         storeCondition = 'AND 1 = 0';
       }
@@ -650,10 +691,16 @@ router.get('/dashboard/order-trend/:userId', async (req, res) => {
         A.market_type,
         COUNT(*) as order_count
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -739,9 +786,11 @@ router.get('/dashboard/sales-trend/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         storeCondition = 'AND 1 = 0';
       }
@@ -756,10 +805,16 @@ router.get('/dashboard/sales-trend/:userId', async (req, res) => {
         A.market_type,
         SUM(CAST(A.pay_amt AS BIGINT)) as total_amount
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''
@@ -846,9 +901,11 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
     // 스토어 필터 조건 생성
     let storeCondition = '';
     if (stores && stores.trim() !== '') {
-      const storeList = stores.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+      const storeList = stores.split(',').map(s => s.trim()).filter(s => s !== '');
       if (storeList.length > 0) {
-        storeCondition = `AND A.biz_idx IN (${storeList.join(',')})`;
+        // SQL injection 방지를 위해 각 스토어명을 이스케이프
+        const escapedStores = storeList.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+        storeCondition = `AND COALESCE(B_SS.store_name, B_CP.store_name) IN (${escapedStores})`;
       } else {
         storeCondition = 'AND 1 = 0';
       }
@@ -862,10 +919,16 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
         SUM(CAST(A.pay_amt AS BIGINT)) as total_sales,
         SUM(ISNULL(TRY_CAST(A.pre_amt AS BIGINT), 0)) as expected_profit
       FROM tb_order_info A
-      INNER JOIN tb_user_market_ss B
-        ON A.user_id = B.user_id 
-        AND A.biz_idx = B.biz_idx 
-      WHERE B.user_id = @userId
+      LEFT OUTER JOIN tb_user_market_ss B_SS
+        ON A.user_id = B_SS.user_id 
+        AND A.biz_idx = B_SS.biz_idx
+        AND A.market_type = 'SS'
+      LEFT OUTER JOIN tb_user_market_cp B_CP
+        ON A.user_id = B_CP.user_id 
+        AND A.biz_idx = B_CP.biz_idx
+        AND A.market_type = 'CP'
+      WHERE A.user_id = @userId
+      AND (B_SS.user_id IS NOT NULL OR B_CP.user_id IS NOT NULL)
       AND A.seller_cd NOT LIKE 'C[_]%'
       AND A.order_status IS NOT NULL
       AND A.order_status != ''

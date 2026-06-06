@@ -10,7 +10,8 @@ interface OrderSalesSummaryProps {
   dateFilter: string
   smartStore: boolean
   coupang: boolean
-  selectedStores: number[]
+  selectedStores: string[]
+  stores: Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>
   useCustomDate?: boolean
   startDate?: string
   endDate?: string
@@ -21,6 +22,7 @@ function OrderSalesSummary({
   smartStore, 
   coupang, 
   selectedStores,
+  stores,
   useCustomDate = false,
   startDate = '',
   endDate = ''
@@ -29,16 +31,24 @@ function OrderSalesSummary({
   const [totalSales, setTotalSales] = useState(0)
 
   useEffect(() => {
-    if (userInfo?.userId && selectedStores.length > 0) {
+    if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
       loadSummary()
     } else {
       setTotalSales(0)
     }
-  }, [dateFilter, smartStore, coupang, selectedStores, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, smartStore, coupang, selectedStores, stores, useCustomDate, startDate, endDate, userInfo?.userId])
 
   const loadSummary = async () => {
     try {
-      const storesParam = selectedStores.join(',')
+      // 선택된 스토어 ID를 파싱하여 스토어명으로 변환
+      const selectedStoreNames = selectedStores
+        .map(storeId => {
+          const [marketType, bizIdx] = storeId.split('-')
+          const store = stores.find(s => s.market_type === marketType && s.biz_idx === parseInt(bizIdx))
+          return store?.store_name
+        })
+        .filter(name => name !== undefined)
+      const storesParam = selectedStoreNames.join(',')
       let url = `${API_URL}/dashboard/summary/${userInfo.userId}?dateFilter=${dateFilter}&smartStore=${smartStore}&coupang=${coupang}&stores=${storesParam}`
       
       if (useCustomDate && startDate && endDate) {
