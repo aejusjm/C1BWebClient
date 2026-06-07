@@ -15,7 +15,10 @@ function StandardInfoPage() {
     smartStoreFee: '',
     coupangFee: '',
     smartStoreDiscount: '',
-    coupangDiscount: ''
+    coupangDiscount: '',
+    rateOfReturn: '',
+    baseSubAmt: '',
+    subFee: ''
   })
   const [loading, setLoading] = useState(false)
 
@@ -58,6 +61,29 @@ function StandardInfoPage() {
     setStandardInfo({
       ...standardInfo,
       [field]: value
+    })
+  }
+
+  // 숫자 포맷팅 (천 단위 콤마)
+  const formatNumberWithComma = (value: string): string => {
+    // null, undefined, 빈 값 체크
+    if (!value || value === '') return ''
+    // 문자열로 변환
+    const strValue = String(value)
+    // 숫자만 추출
+    const numbers = strValue.replace(/[^\d]/g, '')
+    if (numbers === '') return ''
+    // 천 단위 콤마 추가
+    return Number(numbers).toLocaleString()
+  }
+
+  // 숫자 필드 변경 핸들러 (천 단위 콤마 포함)
+  const handleNumberChange = (field: string, value: string) => {
+    // 숫자만 추출하여 저장
+    const numbers = value.replace(/[^\d]/g, '')
+    setStandardInfo({
+      ...standardInfo,
+      [field]: numbers
     })
   }
 
@@ -167,6 +193,42 @@ function StandardInfoPage() {
               value={standardInfo.coupangDiscount}
               onChange={(e) => handleChange('coupangDiscount', e.target.value)}
               placeholder="쿠팡 할인율을 입력하세요"
+            />
+          </div>
+
+          {/* 수익율 */}
+          <div className="form-row">
+            <label className="form-label">수익율 :</label>
+            <input
+              type="text"
+              className="form-input"
+              value={standardInfo.rateOfReturn}
+              onChange={(e) => handleChange('rateOfReturn', e.target.value)}
+              placeholder="수익율을 입력하세요"
+            />
+          </div>
+
+          {/* 기준구독계산금액 */}
+          <div className="form-row">
+            <label className="form-label">기준구독계산금액 :</label>
+            <input
+              type="text"
+              className="form-input"
+              value={formatNumberWithComma(standardInfo.baseSubAmt)}
+              onChange={(e) => handleNumberChange('baseSubAmt', e.target.value)}
+              placeholder="기준구독계산금액을 입력하세요"
+            />
+          </div>
+
+          {/* 구독료 */}
+          <div className="form-row">
+            <label className="form-label">구독료 :</label>
+            <input
+              type="text"
+              className="form-input"
+              value={formatNumberWithComma(standardInfo.subFee)}
+              onChange={(e) => handleNumberChange('subFee', e.target.value)}
+              placeholder="구독료를 입력하세요"
             />
           </div>
 

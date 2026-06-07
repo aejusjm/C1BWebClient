@@ -5,6 +5,7 @@ import './OrderSalesSummary.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/orders`
+const STANDARD_INFO_URL = `${API_BASE}/api/standard-info`
 
 interface OrderSalesSummaryProps {
   dateFilter: string
@@ -29,6 +30,33 @@ function OrderSalesSummary({
 }: OrderSalesSummaryProps) {
   const { userInfo } = useUser()
   const [totalSales, setTotalSales] = useState(0)
+  const [rateOfReturn, setRateOfReturn] = useState(0.27) // 기본값 27%
+
+  // 기준정보에서 수익율 로드
+  useEffect(() => {
+    loadRateOfReturn()
+  }, [])
+
+  const loadRateOfReturn = async () => {
+    try {
+      const response = await fetch(STANDARD_INFO_URL)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.data?.rateOfReturn) {
+        // rateOfReturn 값을 숫자로 변환하고 퍼센트로 사용 (예: 27 -> 0.27)
+        const rate = parseFloat(result.data.rateOfReturn) / 100
+        setRateOfReturn(rate)
+      }
+    } catch (error) {
+      console.error('수익율 로드 오류:', error)
+      // 오류 시 기본값 27% 사용
+    }
+  }
 
   useEffect(() => {
     if (userInfo?.userId && stores.length > 0 && selectedStores.length > 0) {
@@ -77,9 +105,9 @@ function OrderSalesSummary({
     return Math.floor(amount / 10000).toLocaleString()
   }
 
-  // 예상수익을 총 매출의 27%로 계산 (만원 단위)
+  // 예상수익을 총 매출 * 수익율로 계산 (만원 단위)
   const calculateExpectedProfit = () => {
-    return Math.floor((totalSales * 0.27) / 10000).toLocaleString()
+    return Math.floor((totalSales * rateOfReturn) / 10000).toLocaleString()
   }
 
   return (

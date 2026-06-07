@@ -23,6 +23,7 @@ interface UserSalesStats {
   cp_sales: number
   total_order_count: number
   total_sales: number
+  total_profit: number
   end_date?: string | null
   user_type?: string
 }
@@ -74,6 +75,28 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
+
+  // 최근 3개월 정보 계산 (-2, -3, -4개월)
+  const getRecentMonths = () => {
+    const today = new Date()
+    const months = []
+    
+    for (let i = 2; i <= 4; i++) {
+      const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1)
+      const month = targetDate.getMonth() + 1
+      const year = targetDate.getFullYear()
+      months.push({
+        key: `month-${year}-${month}`,
+        label: `${month}월`,
+        year: year,
+        month: month
+      })
+    }
+    
+    return months
+  }
+
+  const recentMonths = getRecentMonths()
 
   // 날짜 선택 모달 열기
   const openDateModal = () => {
@@ -278,6 +301,15 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
           >
             지난달
           </button>
+          {recentMonths.map((monthInfo) => (
+            <button 
+              key={monthInfo.key}
+              className={dateFilter === monthInfo.key && !useCustomDate ? 'active' : ''}
+              onClick={() => handleDateFilterChange(monthInfo.key)}
+            >
+              {monthInfo.label}
+            </button>
+          ))}
           <button 
             className={`date-picker-btn ${useCustomDate ? 'active' : ''}`}
             onClick={openDateModal}
@@ -370,6 +402,12 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                 >
                   총매출 {getSortIcon('total_sales')}
                 </th>
+                <th 
+                  rowSpan={2}
+                  className="header-total"
+                >
+                  수익율
+                </th>
               </tr>
               <tr className="header-row-2">
                 <th className="header-smartstore">스스</th>
@@ -399,6 +437,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                   <td className="right cell-sales">{formatAmount(stat.cp_sales)} 만원</td>
                   <td className="right highlight">{stat.total_order_count.toLocaleString()}</td>
                   <td className="right highlight">{formatAmount(stat.total_sales)} 만원</td>
+                  <td className="right highlight">{formatAmount(stat.total_profit)} 만원</td>
                 </tr>
               ))}
             </tbody>

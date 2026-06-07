@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request()
-      .query('SELECT exchange_rate, market_fee_ss, market_fee_cp, discount_ss, discount_cp FROM tb_setting_info');
+      .query('SELECT exchange_rate, market_fee_ss, market_fee_cp, discount_ss, discount_cp, rate_of_return, base_sub_amt, sub_fee FROM tb_setting_info');
     
     if (result.recordset.length > 0) {
       const data = result.recordset[0];
@@ -19,7 +19,10 @@ router.get('/', async (req, res) => {
           smartStoreFee: data.market_fee_ss,
           coupangFee: data.market_fee_cp,
           smartStoreDiscount: data.discount_ss,
-          coupangDiscount: data.discount_cp
+          coupangDiscount: data.discount_cp,
+          rateOfReturn: data.rate_of_return,
+          baseSubAmt: data.base_sub_amt,
+          subFee: data.sub_fee
         }
       });
     } else {
@@ -30,7 +33,10 @@ router.get('/', async (req, res) => {
           smartStoreFee: '',
           coupangFee: '',
           smartStoreDiscount: '',
-          coupangDiscount: ''
+          coupangDiscount: '',
+          rateOfReturn: '',
+          baseSubAmt: '',
+          subFee: ''
         }
       });
     }
@@ -47,7 +53,7 @@ router.get('/', async (req, res) => {
 // 기준정보 저장 API
 router.post('/', async (req, res) => {
   try {
-    const { rate, smartStoreFee, coupangFee, smartStoreDiscount, coupangDiscount } = req.body;
+    const { rate, smartStoreFee, coupangFee, smartStoreDiscount, coupangDiscount, rateOfReturn, baseSubAmt, subFee } = req.body;
     
     const pool = await getConnection();
     
@@ -65,13 +71,19 @@ router.post('/', async (req, res) => {
         .input('market_fee_cp', sql.Decimal(18, 2), coupangFee || 0)
         .input('discount_ss', sql.Decimal(18, 2), smartStoreDiscount || 0)
         .input('discount_cp', sql.Decimal(18, 2), coupangDiscount || 0)
+        .input('rate_of_return', sql.Decimal(18, 2), rateOfReturn || 0)
+        .input('base_sub_amt', sql.Decimal(18, 2), baseSubAmt || 0)
+        .input('sub_fee', sql.Decimal(18, 2), subFee || 0)
         .query(`
           UPDATE tb_setting_info 
           SET exchange_rate = @exchange_rate,
               market_fee_ss = @market_fee_ss,
               market_fee_cp = @market_fee_cp,
               discount_ss = @discount_ss,
-              discount_cp = @discount_cp
+              discount_cp = @discount_cp,
+              rate_of_return = @rate_of_return,
+              base_sub_amt = @base_sub_amt,
+              sub_fee = @sub_fee
         `);
     } else {
       // 삽입
@@ -81,9 +93,12 @@ router.post('/', async (req, res) => {
         .input('market_fee_cp', sql.Decimal(18, 2), coupangFee || 0)
         .input('discount_ss', sql.Decimal(18, 2), smartStoreDiscount || 0)
         .input('discount_cp', sql.Decimal(18, 2), coupangDiscount || 0)
+        .input('rate_of_return', sql.Decimal(18, 2), rateOfReturn || 0)
+        .input('base_sub_amt', sql.Decimal(18, 2), baseSubAmt || 0)
+        .input('sub_fee', sql.Decimal(18, 2), subFee || 0)
         .query(`
-          INSERT INTO tb_setting_info (exchange_rate, market_fee_ss, market_fee_cp, discount_ss, discount_cp)
-          VALUES (@exchange_rate, @market_fee_ss, @market_fee_cp, @discount_ss, @discount_cp)
+          INSERT INTO tb_setting_info (exchange_rate, market_fee_ss, market_fee_cp, discount_ss, discount_cp, rate_of_return, base_sub_amt, sub_fee)
+          VALUES (@exchange_rate, @market_fee_ss, @market_fee_cp, @discount_ss, @discount_cp, @rate_of_return, @base_sub_amt, @sub_fee)
         `);
     }
     
