@@ -232,7 +232,7 @@
 }
 
 .daily-stats-table thead th {
-  padding: 16px 12px;
+  padding: 10px 8px;
   text-align: center;
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -259,7 +259,7 @@
 }
 
 .daily-stats-table tbody td {
-  padding: 14px 12px;
+  padding: 9px 8px;
   text-align: center;
   border: 1px solid #e0e0e0;
   color: #333;
@@ -286,6 +286,7 @@
   color: #7b1fa2;
   background-color: #faf5fc !important;
   border-right: 1px solid #e1bee7 !important;
+  font-size: 12px;
 }
 
 /* 숫자 셀 */
@@ -295,19 +296,24 @@
   font-size: 13px;
 }
 
+/* 0 값에 대한 스타일 */
+.zero-value {
+  color: #ccc !important;
+}
+
 /* 마켓별 합계 */
 .daily-market-total {
-  background-color: #f0f8ff !important;
+  background-color: #e3f2fd !important;
   font-weight: 600;
-  color: #1565c0;
+  color: #0d47a1 !important;
   border-left: 1px solid #90caf9 !important;
 }
 
 /* 일 합계 */
 .daily-day-total {
-  background-color: #fffef5 !important;
+  background-color: #fff3e0 !important;
   font-weight: 700;
-  color: #f57c00;
+  color: #e65100 !important;
   border-left: 1px solid #ffcc80 !important;
 }
 
@@ -318,12 +324,12 @@
 .daily-last-row-of-day .daily-number-cell,
 .daily-last-row-of-day .daily-market-total,
 .daily-last-row-of-day .daily-day-total {
-  border-bottom: 1px solid #1976d2 !important;
+  border-bottom: 1px solid #2196F3 !important;
 }
 
 /* rowSpan이 적용된 셀의 하단 테두리 */
 .has-bottom-border {
-  border-bottom: 1px solid #1976d2 !important;
+  border-bottom: 1px solid #2196F3 !important;
 }
 
 /* 합계 행 */

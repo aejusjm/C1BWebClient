@@ -118,6 +118,78 @@ function OrderSalesStatsPage() {
 
   const recentMonths = getRecentMonths()
 
+  // 선택된 기간의 시작일과 종료일 계산
+  const getDateRange = (): { start: Date, end: Date } => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (useCustomDate && startDate && endDate) {
+      return {
+        start: new Date(startDate),
+        end: new Date(endDate)
+      }
+    }
+
+    let start = new Date(today)
+    let end = new Date(today)
+
+    switch(dateFilter) {
+      case 'today':
+        break
+      case 'yesterday':
+        start.setDate(start.getDate() - 1)
+        end.setDate(end.getDate() - 1)
+        break
+      case 'thisWeek':
+        const dayOfWeek = today.getDay()
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        start.setDate(today.getDate() + diff)
+        break
+      case 'lastWeek':
+        const lastWeekStart = new Date(today)
+        const lastWeekDayOfWeek = today.getDay()
+        const lastWeekDiff = lastWeekDayOfWeek === 0 ? -13 : -6 - lastWeekDayOfWeek
+        lastWeekStart.setDate(today.getDate() + lastWeekDiff)
+        const lastWeekEnd = new Date(lastWeekStart)
+        lastWeekEnd.setDate(lastWeekStart.getDate() + 6)
+        start = lastWeekStart
+        end = lastWeekEnd
+        break
+      case 'thisMonth':
+        start = new Date(today.getFullYear(), today.getMonth(), 1)
+        break
+      case 'lastMonth':
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        end = new Date(today.getFullYear(), today.getMonth(), 0)
+        break
+      default:
+        if (dateFilter.startsWith('month-')) {
+          const parts = dateFilter.split('-')
+          if (parts.length === 3) {
+            const year = parseInt(parts[1])
+            const month = parseInt(parts[2])
+            start = new Date(year, month - 1, 1)
+            end = new Date(year, month, 0)
+          }
+        }
+    }
+
+    return { start, end }
+  }
+
+  // 날짜 범위의 모든 날짜 생성
+  const getAllDatesInRange = (start: Date, end: Date): string[] => {
+    const dates: string[] = []
+    const current = new Date(start)
+    
+    while (current <= end) {
+      dates.push(formatDateToString(current))
+      current.setDate(current.getDate() + 1)
+    }
+    
+    return dates
+  }
+
   // 사용자 정의 날짜 적용
   const handleCustomDateApply = async () => {
     if (!tempStartDate || !tempEndDate) {
@@ -175,6 +247,7 @@ function OrderSalesStatsPage() {
   const processGroupedData = (data: DailySalesStats[]) => {
     const grouped: { [date: string]: GroupedData } = {}
 
+    // 먼저 데이터가 있는 날짜 처리
     data.forEach(item => {
       const dateKey = item.pay_date.split('T')[0]
       
@@ -214,6 +287,34 @@ function OrderSalesStatsPage() {
       grouped[dateKey].dayTotal.order_cnt += orderCnt
       grouped[dateKey].dayTotal.pay_anmt += payAnmt
       grouped[dateKey].dayTotal.pre_amt += preAmt
+    })
+
+    // 선택된 기간의 모든 날짜 생성
+    const { start, end } = getDateRange()
+    const allDates = getAllDatesInRange(start, end)
+
+    // 데이터가 없는 날짜도 추가
+    allDates.forEach(dateKey => {
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = {
+          date: dateKey,
+          markets: {},
+          dayTotal: { order_cnt: 0, pay_anmt: 0, pre_amt: 0 }
+        }
+      }
+    })
+
+    // 모든 날짜에 대해 '스마트스토어'와 '쿠팡' 마켓이 반드시 존재하도록 보장
+    Object.keys(grouped).forEach(dateKey => {
+      const markets = ['스마트스토어', '쿠팡']
+      markets.forEach(marketName => {
+        if (!grouped[dateKey].markets[marketName]) {
+          grouped[dateKey].markets[marketName] = {
+            stores: [],
+            marketTotal: { order_cnt: 0, pay_anmt: 0, pre_amt: 0 }
+          }
+        }
+      })
     })
 
     setGroupedData(Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)))
@@ -258,6 +359,17 @@ function OrderSalesStatsPage() {
       grandTotal.order_cnt += orderCnt
       grandTotal.pay_anmt += payAnmt
       grandTotal.pre_amt += preAmt
+    })
+
+    // 모든 마켓에 대해 '스마트스토어'와 '쿠팡'이 반드시 존재하도록 보장
+    const markets = ['스마트스토어', '쿠팡']
+    markets.forEach(marketName => {
+      if (!marketGrandTotals[marketName]) {
+        marketGrandTotals[marketName] = { order_cnt: 0, pay_anmt: 0, pre_amt: 0 }
+      }
+      if (!marketTotals[marketName]) {
+        marketTotals[marketName] = {}
+      }
     })
 
     return { marketTotals, marketGrandTotals, grandTotal }
@@ -473,14 +585,10 @@ function OrderSalesStatsPage() {
               <tr>
                 <th rowSpan={2} className="daily-header-date">일자</th>
                 <th rowSpan={2} className="daily-header-market">마켓</th>
-                <th colSpan={3} className="daily-header-store">스토어 별</th>
                 <th colSpan={3} className="daily-header-market-total">마켓 별</th>
                 <th colSpan={3} className="daily-header-day-total">일 합계</th>
               </tr>
               <tr>
-                <th className="daily-header-store">주문수</th>
-                <th className="daily-header-store">매출</th>
-                <th className="daily-header-store">예상수익</th>
                 <th className="daily-header-market-total">주문수</th>
                 <th className="daily-header-market-total">매출</th>
                 <th className="daily-header-market-total">예상수익</th>
@@ -491,18 +599,32 @@ function OrderSalesStatsPage() {
             </thead>
             <tbody>
               {groupedData.map((dayData, dayIndex) => {
-                const marketEntries = Object.entries(dayData.markets)
-                const dayRowSpan = marketEntries.reduce((sum, [, m]) => sum + m.stores.length, 0)
+                // 마켓 순서를 명시적으로 정렬: 스마트스토어 먼저, 쿠팡 나중에
+                const marketEntries = Object.entries(dayData.markets).sort(([a], [b]) => {
+                  if (a === '스마트스토어') return -1
+                  if (b === '스마트스토어') return 1
+                  if (a === '쿠팡') return -1
+                  if (b === '쿠팡') return 1
+                  return a.localeCompare(b)
+                })
+                
+                // stores가 빈 배열인 경우에도 최소 1개의 행을 렌더링하기 위해 계산
+                const dayRowSpan = marketEntries.reduce((sum, [, m]) => sum + Math.max(m.stores.length, 1), 0)
                 let rowIndex = 0
 
                 return (
                   <React.Fragment key={dayIndex}>
                     {marketEntries.map(([marketName, marketData], marketIndex) => {
-                      return marketData.stores.map((store, storeIndex) => {
+                      // stores가 비어있으면 빈 데이터로 1개 행 렌더링
+                      const storesToRender = marketData.stores.length > 0 ? marketData.stores : [null]
+                      
+                      return storesToRender.map((_store, storeIndex) => {
                         const isFirstRowOfDay = rowIndex === 0
                         const isFirstRowOfMarket = storeIndex === 0
-                        const marketRowSpan = marketData.stores.length
+                        const marketRowSpan = storesToRender.length
                         const isLastRowOfDay = rowIndex === dayRowSpan - 1
+                        // 마켓의 마지막 행이 일자의 마지막 행인지 확인
+                        const marketEndsWithDay = rowIndex + (marketRowSpan - storeIndex - 1) === dayRowSpan - 1
 
                         rowIndex++
 
@@ -520,22 +642,19 @@ function OrderSalesStatsPage() {
                               </td>
                             )}
                             {isFirstRowOfMarket && (
-                              <td rowSpan={marketRowSpan} className="daily-market-cell">
+                              <td rowSpan={marketRowSpan} className={`daily-market-cell ${marketEndsWithDay ? 'has-bottom-border' : ''}`}>
                                 {marketName}
                               </td>
                             )}
-                            <td className="daily-number-cell">{formatNumber(store.order_cnt)}</td>
-                            <td className="daily-number-cell">{formatNumber(store.pay_anmt)}</td>
-                            <td className="daily-number-cell">{formatNumber(store.pre_amt)}</td>
                             {isFirstRowOfMarket && (
                               <>
-                                <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                                <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketEndsWithDay ? 'has-bottom-border' : ''} ${marketData.marketTotal.order_cnt === 0 ? 'zero-value' : ''}`}>
                                   {formatNumber(marketData.marketTotal.order_cnt)}
                                 </td>
-                                <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                                <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketEndsWithDay ? 'has-bottom-border' : ''} ${marketData.marketTotal.pay_anmt === 0 ? 'zero-value' : ''}`}>
                                   {formatNumber(marketData.marketTotal.pay_anmt)}
                                 </td>
-                                <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                                <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketEndsWithDay ? 'has-bottom-border' : ''} ${marketData.marketTotal.pre_amt === 0 ? 'zero-value' : ''}`}>
                                   {formatNumber(marketData.marketTotal.pre_amt)}
                                 </td>
                               </>
@@ -544,19 +663,19 @@ function OrderSalesStatsPage() {
                               <>
                                 <td 
                                   rowSpan={dayRowSpan} 
-                                  className="daily-number-cell daily-day-total has-bottom-border"
+                                  className={`daily-number-cell daily-day-total has-bottom-border ${dayData.dayTotal.order_cnt === 0 ? 'zero-value' : ''}`}
                                 >
                                   {formatNumber(dayData.dayTotal.order_cnt)}
                                 </td>
                                 <td 
                                   rowSpan={dayRowSpan} 
-                                  className="daily-number-cell daily-day-total has-bottom-border"
+                                  className={`daily-number-cell daily-day-total has-bottom-border ${dayData.dayTotal.pay_anmt === 0 ? 'zero-value' : ''}`}
                                 >
                                   {formatNumber(dayData.dayTotal.pay_anmt)}
                                 </td>
                                 <td 
                                   rowSpan={dayRowSpan} 
-                                  className="daily-number-cell daily-day-total has-bottom-border"
+                                  className={`daily-number-cell daily-day-total has-bottom-border ${dayData.dayTotal.pre_amt === 0 ? 'zero-value' : ''}`}
                                 >
                                   {formatNumber(dayData.dayTotal.pre_amt)}
                                 </td>
@@ -569,21 +688,34 @@ function OrderSalesStatsPage() {
                   </React.Fragment>
                 )
               })}
-              {/* 전체 합계 - 마켓별, 스토어별 */}
-              {Object.entries(marketTotals).map(([marketName, stores], marketIndex) => {
+              {/* 전체 합계 - 마켓별 */}
+              {Object.entries(marketTotals)
+                .sort(([a], [b]) => {
+                  if (a === '스마트스토어') return -1
+                  if (b === '스마트스토어') return 1
+                  if (a === '쿠팡') return -1
+                  if (b === '쿠팡') return 1
+                  return a.localeCompare(b)
+                })
+                .map(([marketName, stores], marketIndex) => {
                 const marketTotal = marketGrandTotals[marketName]
                 const storeEntries = Object.entries(stores)
+                // stores가 비어있으면 최소 1개 행 렌더링
+                const entriesToRender = storeEntries.length > 0 ? storeEntries : [[null, null]]
                 
                 return (
                   <React.Fragment key={`total-${marketIndex}`}>
-                    {storeEntries.map(([_storeName, storeTotal], storeIndex) => {
+                    {entriesToRender.map(([_storeName, _storeTotal], storeIndex) => {
                       const isFirstStoreOfMarket = storeIndex === 0
-                      const marketRowSpan = storeEntries.length
+                      const marketRowSpan = entriesToRender.length
+                      const totalRowSpan = Object.entries(marketTotals).reduce((sum, [, s]) => {
+                        return sum + Math.max(Object.keys(s).length, 1)
+                      }, 0)
 
                       return (
                         <tr key={`total-${marketIndex}-${storeIndex}`} className="daily-total-row">
                           {marketIndex === 0 && storeIndex === 0 && (
-                            <td rowSpan={Object.values(marketTotals).reduce((sum, s) => sum + Object.keys(s).length, 0)} className="daily-total-label">
+                            <td rowSpan={totalRowSpan} className="daily-total-label">
                               합계
                             </td>
                           )}
@@ -592,31 +724,28 @@ function OrderSalesStatsPage() {
                               {marketName}
                             </td>
                           )}
-                          <td className="daily-number-cell">{formatNumber(storeTotal.order_cnt)}</td>
-                          <td className="daily-number-cell">{formatNumber(storeTotal.pay_anmt)}</td>
-                          <td className="daily-number-cell">{formatNumber(storeTotal.pre_amt)}</td>
                           {isFirstStoreOfMarket && (
                             <>
-                              <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                              <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketTotal.order_cnt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(marketTotal.order_cnt)}
                               </td>
-                              <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                              <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketTotal.pay_anmt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(marketTotal.pay_anmt)}
                               </td>
-                              <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
+                              <td rowSpan={marketRowSpan} className={`daily-number-cell daily-market-total ${marketTotal.pre_amt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(marketTotal.pre_amt)}
                               </td>
                             </>
                           )}
                           {marketIndex === 0 && storeIndex === 0 && (
                             <>
-                              <td rowSpan={Object.values(marketTotals).reduce((sum, s) => sum + Object.keys(s).length, 0)} className="daily-number-cell daily-grand-total-cell">
+                              <td rowSpan={totalRowSpan} className={`daily-number-cell daily-grand-total-cell ${grandTotal.order_cnt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(grandTotal.order_cnt)}
                               </td>
-                              <td rowSpan={Object.values(marketTotals).reduce((sum, s) => sum + Object.keys(s).length, 0)} className="daily-number-cell daily-grand-total-cell">
+                              <td rowSpan={totalRowSpan} className={`daily-number-cell daily-grand-total-cell ${grandTotal.pay_anmt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(grandTotal.pay_anmt)}
                               </td>
-                              <td rowSpan={Object.values(marketTotals).reduce((sum, s) => sum + Object.keys(s).length, 0)} className="daily-number-cell daily-grand-total-cell">
+                              <td rowSpan={totalRowSpan} className={`daily-number-cell daily-grand-total-cell ${grandTotal.pre_amt === 0 ? 'zero-value' : ''}`}>
                                 {formatNumber(grandTotal.pre_amt)}
                               </td>
                             </>

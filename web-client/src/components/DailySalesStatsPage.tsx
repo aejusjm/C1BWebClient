@@ -744,8 +744,51 @@ function DailySalesStatsPage() {
                     {
                       label: '전체 매출 (만원)',
                       data: totalChartData.sales.map(s => Math.floor(s / 10000)),
-                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                      borderColor: 'rgba(75, 192, 192, 1)',
+                      backgroundColor: totalChartData.dates.map(dateStr => {
+                        // 날짜 문자열에서 요일 추출
+                        let date: Date
+                        if (dateStr.includes('(주)')) {
+                          date = new Date(dateStr.split(' ')[0])
+                        } else if (dateStr.length === 7) {
+                          date = new Date(dateStr + '-01')
+                        } else {
+                          date = new Date(dateStr)
+                        }
+                        
+                        const dayOfWeek = date.getDay()
+                        const colors = [
+                          'rgba(244, 67, 54, 0.4)',   // 일요일 - 연한 빨강
+                          'rgba(255, 152, 0, 0.9)',   // 월요일 - 진한 주황
+                          'rgba(233, 30, 99, 0.4)',   // 화요일 - 연한 분홍
+                          'rgba(76, 175, 80, 0.4)',   // 수요일 - 연한 초록
+                          'rgba(255, 193, 7, 0.4)',   // 목요일 - 연한 노랑
+                          'rgba(33, 150, 243, 0.4)',  // 금요일 - 연한 파랑
+                          'rgba(156, 39, 176, 0.4)'   // 토요일 - 연한 보라
+                        ]
+                        return colors[dayOfWeek]
+                      }),
+                      borderColor: totalChartData.dates.map(dateStr => {
+                        let date: Date
+                        if (dateStr.includes('(주)')) {
+                          date = new Date(dateStr.split(' ')[0])
+                        } else if (dateStr.length === 7) {
+                          date = new Date(dateStr + '-01')
+                        } else {
+                          date = new Date(dateStr)
+                        }
+                        
+                        const dayOfWeek = date.getDay()
+                        const colors = [
+                          'rgba(244, 67, 54, 0.8)',   // 일요일
+                          'rgba(255, 152, 0, 1)',     // 월요일 - 진한 테두리
+                          'rgba(233, 30, 99, 0.8)',   // 화요일
+                          'rgba(76, 175, 80, 0.8)',   // 수요일
+                          'rgba(255, 193, 7, 0.8)',   // 목요일
+                          'rgba(33, 150, 243, 0.8)',  // 금요일
+                          'rgba(156, 39, 176, 0.8)'   // 토요일
+                        ]
+                        return colors[dayOfWeek]
+                      }),
                       borderWidth: 2
                     }
                   ]
@@ -759,6 +802,21 @@ function DailySalesStatsPage() {
                     },
                     tooltip: {
                       callbacks: {
+                        title: (context) => {
+                          const dateStr = context[0].label
+                          let date: Date
+                          if (dateStr.includes('(주)')) {
+                            date = new Date(dateStr.split(' ')[0])
+                          } else if (dateStr.length === 7) {
+                            date = new Date(dateStr + '-01')
+                          } else {
+                            date = new Date(dateStr)
+                          }
+                          
+                          const dayOfWeek = date.getDay()
+                          const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+                          return `${dateStr} (${dayNames[dayOfWeek]})`
+                        },
                         label: (context) => {
                           const valueInWon = (context.parsed.y || 0) * 10000
                           return `전체 매출: ${Math.floor(valueInWon / 10000).toLocaleString('ko-KR')} 만원`
@@ -793,14 +851,10 @@ function DailySalesStatsPage() {
               <tr>
                 <th rowSpan={2} className="daily-header-date">일자</th>
                 <th rowSpan={2} className="daily-header-market">마켓</th>
-                <th colSpan={3} className="daily-header-store">스토어 별</th>
                 <th colSpan={3} className="daily-header-market-total">마켓 별</th>
                 <th colSpan={3} className="daily-header-day-total">일 합계</th>
               </tr>
               <tr>
-                <th className="daily-header-store">주문수</th>
-                <th className="daily-header-store">매출</th>
-                <th className="daily-header-store">예상수익</th>
                 <th className="daily-header-market-total">주문수</th>
                 <th className="daily-header-market-total">매출</th>
                 <th className="daily-header-market-total">예상수익</th>
@@ -818,7 +872,7 @@ function DailySalesStatsPage() {
                 return (
                   <React.Fragment key={dayIndex}>
                     {marketEntries.map(([marketName, marketData], marketIndex) => {
-                      return marketData.stores.map((store, storeIndex) => {
+                      return marketData.stores.map((_store, storeIndex) => {
                         const isFirstRowOfDay = rowIndex === 0
                         const isFirstRowOfMarket = storeIndex === 0
                         const marketRowSpan = marketData.stores.length
@@ -844,9 +898,6 @@ function DailySalesStatsPage() {
                                 {marketName}
                               </td>
                             )}
-                            <td className="daily-number-cell">{formatNumber(store.order_cnt)}</td>
-                            <td className="daily-number-cell">{formatNumber(store.pay_anmt)}</td>
-                            <td className="daily-number-cell">{formatNumber(store.pre_amt)}</td>
                             {isFirstRowOfMarket && (
                               <>
                                 <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
@@ -896,7 +947,7 @@ function DailySalesStatsPage() {
                 
                 return (
                   <React.Fragment key={`total-${marketIndex}`}>
-                    {storeEntries.map(([_storeName, storeTotal], storeIndex) => {
+                    {storeEntries.map(([_storeName, _storeTotal], storeIndex) => {
                       const isFirstStoreOfMarket = storeIndex === 0
                       const marketRowSpan = storeEntries.length
 
@@ -912,9 +963,6 @@ function DailySalesStatsPage() {
                               {marketName}
                             </td>
                           )}
-                          <td className="daily-number-cell">{formatNumber(storeTotal.order_cnt)}</td>
-                          <td className="daily-number-cell">{formatNumber(storeTotal.pay_anmt)}</td>
-                          <td className="daily-number-cell">{formatNumber(storeTotal.pre_amt)}</td>
                           {isFirstStoreOfMarket && (
                             <>
                               <td rowSpan={marketRowSpan} className="daily-number-cell daily-market-total">
