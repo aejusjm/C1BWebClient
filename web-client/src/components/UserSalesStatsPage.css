@@ -323,6 +323,20 @@
   font-weight: 700;
 }
 
+/* 수익율 헤더 - 연한 그린 */
+.stats-table th.header-profit {
+  background: #e8f5e9;
+  color: #388e3c;
+  font-weight: 700;
+}
+
+/* 구독료 헤더 - 연한 시안 */
+.stats-table th.header-subscription {
+  background: #e0f7fa;
+  color: #00796b;
+  font-weight: 700;
+}
+
 /* 정렬 가능한 헤더 */
 .stats-table th.sortable {
   cursor: pointer;
@@ -385,6 +399,25 @@
   background: #fff9e6;
   font-weight: 700;
   color: #f57c00;
+}
+
+/* 수익율 셀 - 연한 그린 */
+.stats-table td.cell-profit {
+  background: #e8f5e9 !important;
+  color: #388e3c !important;
+  font-weight: 700 !important;
+}
+
+/* 구독료 셀 - 연한 시안 */
+.stats-table td.cell-subscription {
+  background: #e0f7fa !important;
+  color: #00796b !important;
+  font-weight: 700 !important;
+}
+
+/* 0 값인 경우 회색 텍스트 (배경은 유지) */
+.stats-table td.zero-value {
+  color: #999 !important;
 }
 
 /* 로딩 및 빈 데이터 메시지 */
@@ -562,4 +595,28 @@
   color: #1565c0;
   text-decoration-color: #1565c0;
   transform: translateX(2px);
+}
+
+/* 합계 행 스타일 */
+.stats-table tr.totals-row {
+  background: #f0f0f0 !important;
+  font-weight: 700;
+}
+
+.stats-table tr.totals-row td {
+  background: #f0f0f0 !important;
+  border-top: 2px solid #999;
+  font-weight: 700 !important;
+  color: #333 !important;
+}
+
+.stats-table tr.totals-row td.totals-label {
+  font-size: 15px;
+  color: #000 !important;
+  letter-spacing: 0.5px;
+}
+
+/* 합계 행 호버 비활성화 */
+.stats-table tr.totals-row:hover {
+  background: #f0f0f0 !important;
 }

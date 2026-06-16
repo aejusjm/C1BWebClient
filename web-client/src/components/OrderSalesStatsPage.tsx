@@ -1,4 +1,4 @@
-// 일자별 매출 통계 페이지 컴포넌트
+// 매출통계 페이지 컴포넌트
 import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useAlert } from '../contexts/AlertContext'
@@ -6,26 +6,7 @@ import DatePicker from 'react-datepicker'
 import { ko } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import * as XLSX from 'xlsx'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js'
-import { Bar } from 'react-chartjs-2'
 import './DailySalesStatsPage.css'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-)
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
@@ -38,20 +19,6 @@ interface DailySalesStats {
   order_cnt: number
   pay_anmt: number
   pre_amt: number
-}
-
-interface UserDailySales {
-  user_id: string
-  user_name: string
-  pay_date: string
-  total_sales: number
-}
-
-interface UserChartData {
-  user_id: string
-  user_name: string
-  dates: string[]
-  sales: number[]
 }
 
 interface GroupedData {
@@ -73,7 +40,7 @@ interface GroupedData {
   }
 }
 
-function DailySalesStatsPage() {
+function OrderSalesStatsPage() {
   const { userInfo } = useUser()
   const { showAlert } = useAlert()
   
@@ -82,7 +49,6 @@ function DailySalesStatsPage() {
   const [useCustomDate, setUseCustomDate] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [aggregationType, setAggregationType] = useState<'day' | 'week' | 'month'>('day')
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
@@ -92,17 +58,14 @@ function DailySalesStatsPage() {
   // 데이터 상태
   const [stats, setStats] = useState<DailySalesStats[]>([])
   const [groupedData, setGroupedData] = useState<GroupedData[]>([])
-  const [userChartData, setUserChartData] = useState<UserChartData[]>([])
-  const [totalChartData, setTotalChartData] = useState<{ dates: string[], sales: number[] }>({ dates: [], sales: [] })
   const [loading, setLoading] = useState(false)
 
   // 데이터 로드
   useEffect(() => {
     if (userInfo?.userId) {
       loadStats()
-      loadUserChartData()
     }
-  }, [dateFilter, useCustomDate, startDate, endDate, aggregationType, userInfo?.userId])
+  }, [dateFilter, useCustomDate, startDate, endDate, userInfo?.userId])
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -254,140 +217,6 @@ function DailySalesStatsPage() {
     })
 
     setGroupedData(Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)))
-  }
-
-  // 사용자별 차트 데이터 로드
-  const loadUserChartData = async () => {
-    try {
-      const params = new URLSearchParams({
-        dateFilter: useCustomDate ? 'custom' : dateFilter
-      })
-      
-      if (useCustomDate && startDate && endDate) {
-        params.append('startDate', startDate)
-        params.append('endDate', endDate)
-      }
-      
-      const url = `${API_URL}/daily-sales-by-user?${params.toString()}`
-      
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        processUserChartData(result.data)
-      }
-    } catch (error) {
-      console.error('사용자별 차트 데이터 조회 오류:', error)
-    }
-  }
-
-  // 사용자별 차트 데이터 처리
-  const processUserChartData = (data: UserDailySales[]) => {
-    // 날짜를 집계 기준에 따라 변환하는 함수
-    const getAggregatedDateKey = (dateStr: string): string => {
-      const date = new Date(dateStr.split('T')[0])
-      
-      if (aggregationType === 'day') {
-        return dateStr.split('T')[0]
-      } else if (aggregationType === 'week') {
-        // 주 단위: 해당 주의 월요일 날짜
-        const day = date.getDay()
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1) // 월요일로 조정
-        const monday = new Date(date.setDate(diff))
-        const year = monday.getFullYear()
-        const month = String(monday.getMonth() + 1).padStart(2, '0')
-        const dayNum = String(monday.getDate()).padStart(2, '0')
-        return `${year}-${month}-${dayNum}`
-      } else { // month
-        // 월 단위: YYYY-MM
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        return `${year}-${month}`
-      }
-    }
-
-    // 날짜 레이블 형식 지정
-    const formatDateLabel = (dateKey: string): string => {
-      if (aggregationType === 'day') {
-        return dateKey
-      } else if (aggregationType === 'week') {
-        // 주 단위: MM/DD~ 형식
-        const date = new Date(dateKey)
-        const endDate = new Date(date)
-        endDate.setDate(endDate.getDate() + 6)
-        return `${dateKey} (주)`
-      } else { // month
-        // 월 단위: YYYY-MM 형식
-        return dateKey
-      }
-    }
-    
-    // 사용자별로 데이터 그룹화
-    const userMap: { [userId: string]: UserChartData } = {}
-    const allDates = new Set<string>()
-    const totalSalesByDate: { [date: string]: number } = {}
-    const rawDataByUserAndDate: { [userId: string]: { [date: string]: number } } = {}
-
-    data.forEach(item => {
-      const aggregatedDateKey = getAggregatedDateKey(item.pay_date)
-      allDates.add(aggregatedDateKey)
-      
-      // 사용자별 데이터 추가
-      if (!userMap[item.user_id]) {
-        userMap[item.user_id] = {
-          user_id: item.user_id,
-          user_name: item.user_name,
-          dates: [],
-          sales: []
-        }
-      }
-
-      // 사용자별 날짜별 매출 합산
-      if (!rawDataByUserAndDate[item.user_id]) {
-        rawDataByUserAndDate[item.user_id] = {}
-      }
-      if (!rawDataByUserAndDate[item.user_id][aggregatedDateKey]) {
-        rawDataByUserAndDate[item.user_id][aggregatedDateKey] = 0
-      }
-      rawDataByUserAndDate[item.user_id][aggregatedDateKey] += Number(item.total_sales) || 0
-      
-      // 전체 합계 계산
-      if (!totalSalesByDate[aggregatedDateKey]) {
-        totalSalesByDate[aggregatedDateKey] = 0
-      }
-      totalSalesByDate[aggregatedDateKey] += Number(item.total_sales) || 0
-    })
-
-    // 날짜 정렬
-    const sortedDates = Array.from(allDates).sort()
-
-    // 각 사용자별로 날짜별 데이터 채우기
-    Object.values(userMap).forEach(user => {
-      const salesMap = rawDataByUserAndDate[user.user_id] || {}
-      
-      // 모든 날짜에 대해 데이터 채우기 (없는 날짜는 0)
-      user.dates = sortedDates.map(date => formatDateLabel(date))
-      user.sales = sortedDates.map(date => salesMap[date] || 0)
-    })
-
-    // 전체 합계 차트 데이터
-    const totalSales = sortedDates.map(date => totalSalesByDate[date] || 0)
-    const formattedDates = sortedDates.map(date => formatDateLabel(date))
-    
-    // 총 매출액 순으로 정렬 (내림차순)
-    const sortedUserChartData = Object.values(userMap).sort((a, b) => {
-      const totalSalesA = a.sales.reduce((sum, sale) => sum + sale, 0)
-      const totalSalesB = b.sales.reduce((sum, sale) => sum + sale, 0)
-      return totalSalesB - totalSalesA
-    })
-    
-    setUserChartData(sortedUserChartData)
-    setTotalChartData({ dates: formattedDates, sales: totalSales })
   }
 
   // 숫자 포맷팅
@@ -548,9 +377,9 @@ function DailySalesStatsPage() {
 
     const ws = XLSX.utils.json_to_sheet(excelData)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '일자별 매출통계')
+    XLSX.utils.book_append_sheet(wb, ws, '매출통계')
 
-    const fileName = `일자별_매출통계_${formatDateToString(new Date())}.xlsx`
+    const fileName = `매출통계_${formatDateToString(new Date())}.xlsx`
     XLSX.writeFile(wb, fileName)
   }
 
@@ -560,7 +389,7 @@ function DailySalesStatsPage() {
     <div className="daily-sales-stats-page">
       {/* 페이지 헤더 */}
       <div className="page-header">
-        <h1 className="page-title">📊 사용자별 매출 추이</h1>
+        <h1 className="page-title">💰 매출통계</h1>
       </div>
 
       {/* 검색 조건 */}
@@ -627,161 +456,12 @@ function DailySalesStatsPage() {
 
         <div className="filter-divider"></div>
 
-        {/* 합계 기준 선택 */}
-        <div className="aggregation-section">
-          <span className="filter-label">합계기준:</span>
-          <div className="aggregation-buttons">
-            <button 
-              className={aggregationType === 'day' ? 'active' : ''}
-              onClick={() => setAggregationType('day')}
-            >
-              일
-            </button>
-            <button 
-              className={aggregationType === 'week' ? 'active' : ''}
-              onClick={() => setAggregationType('week')}
-            >
-              주
-            </button>
-            <button 
-              className={aggregationType === 'month' ? 'active' : ''}
-              onClick={() => setAggregationType('month')}
-            >
-              월
-            </button>
-          </div>
-        </div>
-
-        <div className="filter-divider"></div>
-
         <div className="daily-filter-actions">
           <button className="daily-excel-download-btn" onClick={handleExcelDownload}>
             📥 엑셀 다운로드
           </button>
         </div>
       </div>
-
-      {/* 사용자별 매출 Bar Chart */}
-      {!loading && userChartData.length > 0 && (
-        <div className="chart-section">
-          {/* 사용자별 차트 */}
-          <div className="user-charts-container">
-            {userChartData.map((userData) => {
-              // 총 매출액 계산 (만원 단위)
-              const totalSales = userData.sales.reduce((sum, sale) => sum + sale, 0)
-              const totalSalesInManwon = Math.floor(totalSales / 10000)
-              
-              return (
-              <div key={userData.user_id} className="user-chart-row">
-                <div className="user-chart-label">
-                  <span className="user-name">{userData.user_name}</span>
-                  <span className="user-total-sales">({totalSalesInManwon.toLocaleString('ko-KR')}만원)</span>
-                </div>
-                <div className="user-chart-wrapper">
-                  <Bar
-                    data={{
-                      labels: userData.dates,
-                      datasets: [
-                        {
-                          label: '매출 (만원)',
-                          data: userData.sales.map(s => Math.floor(s / 10000)),
-                          backgroundColor: userData.sales.map(s => {
-                            const valueInManwon = Math.floor(s / 10000)
-                            return valueInManwon >= 30 ? 'rgba(186, 104, 200, 0.7)' : 'rgba(54, 162, 235, 0.7)'
-                          }),
-                          borderColor: userData.sales.map(s => {
-                            const valueInManwon = Math.floor(s / 10000)
-                            return valueInManwon >= 30 ? 'rgba(186, 104, 200, 1)' : 'rgba(54, 162, 235, 1)'
-                          }),
-                          borderWidth: 1
-                        }
-                      ]
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: false
-                        },
-                        tooltip: {
-                          callbacks: {
-                            label: (context) => {
-                              const valueInWon = (context.parsed.y || 0) * 10000
-                              return `매출: ${Math.floor(valueInWon / 10000).toLocaleString('ko-KR')} 만원`
-                            }
-                          }
-                        }
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          ticks: {
-                            callback: (value) => {
-                              return `${Number(value).toLocaleString('ko-KR')} 만원`
-                            }
-                          }
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            )
-            })}
-          </div>
-
-          {/* 전체 합계 차트 */}
-          <div className="total-chart-container">
-            <h3 className="total-chart-title">
-              전체 합계 ({Math.floor(totalChartData.sales.reduce((sum, sale) => sum + sale, 0) / 10000).toLocaleString('ko-KR')}만원)
-            </h3>
-            <div className="total-chart-wrapper">
-              <Bar
-                data={{
-                  labels: totalChartData.dates,
-                  datasets: [
-                    {
-                      label: '전체 매출 (만원)',
-                      data: totalChartData.sales.map(s => Math.floor(s / 10000)),
-                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                      borderColor: 'rgba(75, 192, 192, 1)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      display: false
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          const valueInWon = (context.parsed.y || 0) * 10000
-                          return `전체 매출: ${Math.floor(valueInWon / 10000).toLocaleString('ko-KR')} 만원`
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => {
-                          return `${Number(value).toLocaleString('ko-KR')} 만원`
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 통계 테이블 */}
       <div className="daily-stats-table-container">
@@ -1006,4 +686,4 @@ function DailySalesStatsPage() {
   )
 }
 
-export default DailySalesStatsPage
+export default OrderSalesStatsPage

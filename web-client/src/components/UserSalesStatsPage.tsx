@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useAlert } from '../contexts/AlertContext'
 import DatePicker from 'react-datepicker'
+import { ko } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import './UserSalesStatsPage.css'
 
@@ -24,6 +25,7 @@ interface UserSalesStats {
   total_order_count: number
   total_sales: number
   total_profit: number
+  subscription_fee: number
   end_date?: string | null
   user_type?: string
 }
@@ -206,6 +208,33 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   // 금액 포맷 (만원 단위)
   const formatAmount = (amount: number) => {
     return Math.floor(amount / 10000).toLocaleString()
+  }
+
+  // 합계 계산
+  const calculateTotals = () => {
+    return stats.reduce((acc, stat) => ({
+      ss_store_count: acc.ss_store_count + Number(stat.ss_store_count || 0),
+      ss_order_count: acc.ss_order_count + Number(stat.ss_order_count || 0),
+      ss_sales: acc.ss_sales + Number(stat.ss_sales || 0),
+      cp_store_count: acc.cp_store_count + Number(stat.cp_store_count || 0),
+      cp_order_count: acc.cp_order_count + Number(stat.cp_order_count || 0),
+      cp_sales: acc.cp_sales + Number(stat.cp_sales || 0),
+      total_order_count: acc.total_order_count + Number(stat.total_order_count || 0),
+      total_sales: acc.total_sales + Number(stat.total_sales || 0),
+      total_profit: acc.total_profit + Number(stat.total_profit || 0),
+      subscription_fee: acc.subscription_fee + Number(stat.subscription_fee || 0)
+    }), {
+      ss_store_count: 0,
+      ss_order_count: 0,
+      ss_sales: 0,
+      cp_store_count: 0,
+      cp_order_count: 0,
+      cp_sales: 0,
+      total_order_count: 0,
+      total_sales: 0,
+      total_profit: 0,
+      subscription_fee: 0
+    })
   }
 
   // 정렬 아이콘 표시
@@ -404,9 +433,15 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                 </th>
                 <th 
                   rowSpan={2}
-                  className="header-total"
+                  className="header-total header-profit"
                 >
-                  수익율
+                  예상수익
+                </th>
+                <th 
+                  rowSpan={2}
+                  className="header-total header-subscription"
+                >
+                  구독료
                 </th>
               </tr>
               <tr className="header-row-2">
@@ -431,15 +466,74 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                   </td>
                   <td className="center cell-store-count">{stat.ss_store_count}</td>
                   <td className="center cell-store-count">{stat.cp_store_count}</td>
-                  <td className="right cell-order-count">{stat.ss_order_count.toLocaleString()}</td>
-                  <td className="right cell-order-count">{stat.cp_order_count.toLocaleString()}</td>
-                  <td className="right cell-sales">{formatAmount(stat.ss_sales)} 만원</td>
-                  <td className="right cell-sales">{formatAmount(stat.cp_sales)} 만원</td>
-                  <td className="right highlight">{stat.total_order_count.toLocaleString()}</td>
-                  <td className="right highlight">{formatAmount(stat.total_sales)} 만원</td>
-                  <td className="right highlight">{formatAmount(stat.total_profit)} 만원</td>
+                  <td 
+                    className="right cell-order-count"
+                    style={{ color: stat.ss_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {stat.ss_order_count.toLocaleString()}
+                  </td>
+                  <td 
+                    className="right cell-order-count"
+                    style={{ color: stat.cp_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {stat.cp_order_count.toLocaleString()}
+                  </td>
+                  <td 
+                    className="right cell-sales"
+                    style={{ color: stat.ss_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {formatAmount(stat.ss_sales)} 만원
+                  </td>
+                  <td 
+                    className="right cell-sales"
+                    style={{ color: stat.cp_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {formatAmount(stat.cp_sales)} 만원
+                  </td>
+                  <td 
+                    className="right highlight"
+                    style={{ color: stat.total_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {stat.total_order_count.toLocaleString()}
+                  </td>
+                  <td 
+                    className="right highlight"
+                    style={{ color: stat.total_order_count === 0 ? '#999' : undefined }}
+                  >
+                    {formatAmount(stat.total_sales)} 만원
+                  </td>
+                  <td 
+                    className={`right highlight cell-profit ${stat.total_order_count === 0 ? 'zero-value' : ''}`}
+                  >
+                    {formatAmount(stat.total_profit)} 만원
+                  </td>
+                  <td 
+                    className={`right highlight cell-subscription ${stat.total_order_count === 0 ? 'zero-value' : ''}`}
+                  >
+                    {formatAmount(stat.subscription_fee)} 만원
+                  </td>
                 </tr>
               ))}
+              
+              {/* 합계 행 */}
+              {stats.length > 0 && (() => {
+                const totals = calculateTotals()
+                return (
+                  <tr className="totals-row">
+                    <td colSpan={3} className="center totals-label">합계</td>
+                    <td className="center cell-store-count">{totals.ss_store_count}</td>
+                    <td className="center cell-store-count">{totals.cp_store_count}</td>
+                    <td className="right cell-order-count">{totals.ss_order_count.toLocaleString()}</td>
+                    <td className="right cell-order-count">{totals.cp_order_count.toLocaleString()}</td>
+                    <td className="right cell-sales">{formatAmount(totals.ss_sales)} 만원</td>
+                    <td className="right cell-sales">{formatAmount(totals.cp_sales)} 만원</td>
+                    <td className="right highlight">{totals.total_order_count.toLocaleString()}</td>
+                    <td className="right highlight">{formatAmount(totals.total_sales)} 만원</td>
+                    <td className="right highlight cell-profit">{formatAmount(totals.total_profit)} 만원</td>
+                    <td className="right highlight cell-subscription">{formatAmount(totals.subscription_fee)} 만원</td>
+                  </tr>
+                )
+              })()}
             </tbody>
           </table>
         )}
@@ -462,7 +556,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                   selected={tempStartDate}
                   onChange={(date: Date | null) => setTempStartDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  dateFormatCalendar="yyyy년 M월"
+                  locale={ko}
+                  dateFormatCalendar="yyyy년 MM월"
                   className="date-input-modal"
                   placeholderText="시작일을 선택하세요"
                   showMonthDropdown
@@ -476,7 +571,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                   selected={tempEndDate}
                   onChange={(date: Date | null) => setTempEndDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  dateFormatCalendar="yyyy년 M월"
+                  locale={ko}
+                  dateFormatCalendar="yyyy년 MM월"
                   className="date-input-modal"
                   placeholderText="종료일을 선택하세요"
                   showMonthDropdown

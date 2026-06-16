@@ -157,7 +157,12 @@ router.get('/user-sales', async (req, res) => {
         cp_sales,
         (ss_order_count + cp_order_count) as total_order_count,
         (ss_sales + cp_sales) as total_sales,
-        (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 as total_profit
+        (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 as total_profit,
+        CASE 
+          WHEN (ss_sales + cp_sales) >= ISNULL((SELECT TOP 1 base_sub_amt FROM tb_setting_info), 0) 
+          THEN ISNULL((SELECT TOP 1 sub_fee FROM tb_setting_info), 0)
+          ELSE (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 / 2
+        END as subscription_fee
       FROM UserStats
       ${orderByClause}
     `;
@@ -182,7 +187,7 @@ router.get('/user-sales', async (req, res) => {
   }
 });
 
-// 일자별 매출 통계 조회 API
+// 일자별 매출 통계 조회 API (특정 사용자)
 router.get('/daily-sales/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -200,27 +205,39 @@ router.get('/daily-sales/:userId', async (req, res) => {
     if (startDate && endDate) {
       dateCondition = `AND CONVERT(DATE, A.pay_date) >= '${startDate}' AND CONVERT(DATE, A.pay_date) <= '${endDate}'`;
     } else {
-      switch(dateFilter) {
-        case 'today':
+      // 동적 월 필터 처리 (month-YYYY-M 형식)
+      if (dateFilter && dateFilter.startsWith('month-')) {
+        const parts = dateFilter.split('-');
+        if (parts.length === 3) {
+          const year = parts[1];
+          const month = parts[2];
+          dateCondition = `AND YEAR(A.pay_date) = ${year} AND MONTH(A.pay_date) = ${month}`;
+        } else {
           dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
-          break;
-        case 'yesterday':
-          dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(DAY, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
-          break;
-        case 'thisWeek':
-          dateCondition = 'AND A.pay_date >= DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 8 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
-          break;
-        case 'lastWeek':
-          dateCondition = 'AND A.pay_date >= DATEADD(DAY, -6 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
-          break;
-        case 'thisMonth':
-          dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(HOUR, 9, GETUTCDATE())) AND MONTH(A.pay_date) = MONTH(DATEADD(HOUR, 9, GETUTCDATE()))';
-          break;
-        case 'lastMonth':
-          dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE()))) AND MONTH(A.pay_date) = MONTH(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
-          break;
-        default:
-          dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+        }
+      } else {
+        switch(dateFilter) {
+          case 'today':
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+            break;
+          case 'yesterday':
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(DAY, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'thisWeek':
+            dateCondition = 'AND A.pay_date >= DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 8 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'lastWeek':
+            dateCondition = 'AND A.pay_date >= DATEADD(DAY, -6 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'thisMonth':
+            dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(HOUR, 9, GETUTCDATE())) AND MONTH(A.pay_date) = MONTH(DATEADD(HOUR, 9, GETUTCDATE()))';
+            break;
+          case 'lastMonth':
+            dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE()))) AND MONTH(A.pay_date) = MONTH(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          default:
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+        }
       }
     }
     
@@ -304,6 +321,109 @@ router.get('/daily-sales/:userId', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '일자별 매출 통계 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
+// 전체 사용자 일자별 매출 통계 조회 API (관리자용)
+router.get('/daily-sales-by-user', async (req, res) => {
+  try {
+    const { 
+      dateFilter = 'today', 
+      startDate,
+      endDate
+    } = req.query;
+    
+    const pool = await getConnection();
+    
+    // 날짜 필터 조건 생성
+    let dateCondition = '';
+    
+    if (startDate && endDate) {
+      dateCondition = `AND CONVERT(DATE, A.pay_date) >= '${startDate}' AND CONVERT(DATE, A.pay_date) <= '${endDate}'`;
+    } else {
+      // 동적 월 필터 처리 (month-YYYY-M 형식)
+      if (dateFilter && dateFilter.startsWith('month-')) {
+        const parts = dateFilter.split('-');
+        if (parts.length === 3) {
+          const year = parts[1];
+          const month = parts[2];
+          dateCondition = `AND YEAR(A.pay_date) = ${year} AND MONTH(A.pay_date) = ${month}`;
+        } else {
+          dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+        }
+      } else {
+        switch(dateFilter) {
+          case 'today':
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+            break;
+          case 'yesterday':
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(DAY, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'thisWeek':
+            dateCondition = 'AND A.pay_date >= DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 8 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'lastWeek':
+            dateCondition = 'AND A.pay_date >= DATEADD(DAY, -6 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))) AND A.pay_date < DATEADD(DAY, 1 - DATEPART(WEEKDAY, DATEADD(HOUR, 9, GETUTCDATE())), CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          case 'thisMonth':
+            dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(HOUR, 9, GETUTCDATE())) AND MONTH(A.pay_date) = MONTH(DATEADD(HOUR, 9, GETUTCDATE()))';
+            break;
+          case 'lastMonth':
+            dateCondition = 'AND YEAR(A.pay_date) = YEAR(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE()))) AND MONTH(A.pay_date) = MONTH(DATEADD(MONTH, -1, DATEADD(HOUR, 9, GETUTCDATE())))';
+            break;
+          default:
+            dateCondition = 'AND CONVERT(DATE, A.pay_date) = CONVERT(DATE, DATEADD(HOUR, 9, GETUTCDATE()))';
+        }
+      }
+    }
+    
+    // 사용자별 일자별 매출 통계 쿼리
+    const statsQuery = `
+      SELECT 
+        user_id,
+        user_name,
+        pay_date,
+        total_sales
+      FROM 
+      (
+        SELECT
+          U.user_id,
+          U.user_name,
+          CAST(A.pay_date AS date) AS pay_date,
+          SUM(CAST(A.pay_amt AS BIGINT)) AS total_sales
+        FROM tb_order_info A
+        INNER JOIN tb_user U ON A.user_id = U.user_id
+        WHERE U.use_yn = 'Y'
+          AND U.user_type != N'가구매'
+          AND U.user_id NOT IN ('user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser')
+          AND A.seller_cd NOT LIKE 'C[_]%'
+          AND A.order_status IS NOT NULL
+          AND A.order_status != ''
+          AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
+          ${dateCondition}
+          ${SELLER_CD_LEN_FILTER}
+        GROUP BY U.user_id, U.user_name, CAST(A.pay_date AS date)
+      ) T
+      ORDER BY user_name, pay_date
+    `;
+    
+    console.log('사용자별 일자별 매출 통계 쿼리 실행');
+    
+    const result = await pool.request().query(statsQuery);
+    
+    console.log('사용자별 일자별 매출 통계 결과:', result.recordset.length, '건');
+    
+    res.json({
+      success: true,
+      data: result.recordset
+    });
+  } catch (error) {
+    console.error('사용자별 일자별 매출 통계 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '사용자별 일자별 매출 통계 조회 중 오류가 발생했습니다.',
       error: error.message
     });
   }

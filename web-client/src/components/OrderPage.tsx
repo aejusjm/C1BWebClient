@@ -4,6 +4,7 @@ import { useUser } from '../contexts/UserContext'
 import { useFilter } from '../contexts/FilterContext'
 import { useAlert } from '../contexts/AlertContext'
 import DatePicker from 'react-datepicker'
+import { ko } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import './OrderPage.css'
 
@@ -1208,7 +1209,8 @@ function OrderPage() {
                   selected={tempStartDate}
                   onChange={(date: Date | null) => setTempStartDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  dateFormatCalendar="yyyy년 M월"
+                  locale={ko}
+                  dateFormatCalendar="yyyy년 MM월"
                   className="date-input-modal"
                   placeholderText="시작일을 선택하세요"
                   showMonthDropdown
@@ -1222,7 +1224,8 @@ function OrderPage() {
                   selected={tempEndDate}
                   onChange={(date: Date | null) => setTempEndDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  dateFormatCalendar="yyyy년 M월"
+                  locale={ko}
+                  dateFormatCalendar="yyyy년 MM월"
                   className="date-input-modal"
                   placeholderText="종료일을 선택하세요"
                   showMonthDropdown

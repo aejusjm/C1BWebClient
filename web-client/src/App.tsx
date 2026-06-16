@@ -19,6 +19,7 @@ import NoWordManagementPage from './components/NoWordManagementPage'
 import UserSalesStatsPage from './components/UserSalesStatsPage'
 import UploadProductStatsPage from './components/UploadProductStatsPage'
 import DailySalesStatsPage from './components/DailySalesStatsPage'
+import OrderSalesStatsPage from './components/OrderSalesStatsPage'
 import SubscriptionPlanPage from './components/SubscriptionPlanPage'
 import ServerManagementPage from './components/ServerManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
@@ -141,7 +142,7 @@ function App() {
               {activeMenu === 'dashboard' && <Dashboard onNavigate={setActiveMenu} />}
               {activeMenu === 'products' && <ProductPage />}
               {activeMenu === 'orders' && <OrderPage />}
-              {activeMenu === 'order-sales-stats' && <DailySalesStatsPage />}
+              {activeMenu === 'order-sales-stats' && <OrderSalesStatsPage />}
               {activeMenu === 'fake-purchase-info' && <FakePurchaseInfoPage />}
               {activeMenu === 'account' && <AccountPage />}
               {activeMenu === 'basic' && <BasicInfoPage />}
@@ -156,6 +157,7 @@ function App() {
               {activeMenu === 'batch-log' && <BatchLogManagementPage />}
               {activeMenu === 'server-management' && <ServerManagementPage />}
               {activeMenu === 'user-sales-stats' && <UserSalesStatsPage onNavigate={setActiveMenu} />}
+              {activeMenu === 'daily-sales-stats' && <DailySalesStatsPage />}
               {activeMenu === 'upload-product-stats' && <UploadProductStatsPage />}
               {activeMenu === 'fake-purchase-user' && <FakePurchaseUserPage />}
               {activeMenu === 'fake-purchase-product' && <FakePurchaseProductPage />}

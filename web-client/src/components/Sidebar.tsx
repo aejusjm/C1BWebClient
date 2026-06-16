@@ -259,6 +259,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">💰</span> 사용자별 매출
                 </li>
                 <li 
+                  className={activeMenu === 'daily-sales-stats' ? 'active' : ''}
+                  onClick={() => onMenuChange('daily-sales-stats')}
+                >
+                  <span className="submenu-icon">📊</span> 사용자별 매출 추이
+                </li>
+                <li 
                   className={activeMenu === 'mobile-sales-stats' ? 'active' : ''}
                   onClick={() => onMenuChange('mobile-sales-stats')}
                 >
