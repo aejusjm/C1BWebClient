@@ -74,7 +74,8 @@
   border-color: #1976d2;
 }
 
-.product-name-search-input {
+.product-name-search-input,
+.user-search-input {
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
@@ -84,7 +85,12 @@
   transition: all 0.2s;
 }
 
-.product-name-search-input:focus {
+.user-search-input {
+  min-width: 80px;
+}
+
+.product-name-search-input:focus,
+.user-search-input:focus {
   outline: none;
   border-color: #1976d2;
   box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);

@@ -6,9 +6,9 @@ const { getConnection, sql } = require('../config/database');
 // 삭제상품 목록 조회 API
 router.get('/', async (req, res) => {
   try {
-    const { delType, productName } = req.query;
+    const { delType, productName, userKeyword } = req.query;
     
-    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType, 'productName:', productName);
+    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType, 'productName:', productName, 'userKeyword:', userKeyword);
     
     let delTypeCondition = '';
     if (delType) {
@@ -16,11 +16,16 @@ router.get('/', async (req, res) => {
     }
 
     let productNameCondition = '';
+    let userCondition = '';
     const pool = await getConnection();
     const request = pool.request();
     if (productName && String(productName).trim()) {
       productNameCondition = 'AND B.good_name LIKE @productName';
       request.input('productName', sql.NVarChar, `%${String(productName).trim()}%`);
+    }
+    if (userKeyword && String(userKeyword).trim()) {
+      userCondition = 'AND (A.user_id LIKE @userKeyword OR D.user_name LIKE @userKeyword)';
+      request.input('userKeyword', sql.NVarChar, `%${String(userKeyword).trim()}%`);
     }
     
     const result = await request
@@ -57,6 +62,7 @@ router.get('/', async (req, res) => {
         WHERE 1=1
         ${delTypeCondition}
         ${productNameCondition}
+        ${userCondition}
         ORDER BY A.seq DESC
       `);
     

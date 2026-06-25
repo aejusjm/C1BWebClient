@@ -47,6 +47,8 @@ function DeleteProductManagementPage() {
   const [delTypeFilter, setDelTypeFilter] = useState<string>('')
   const [productNameInput, setProductNameInput] = useState('')
   const [productNameFilter, setProductNameFilter] = useState('')
+  const [userInput, setUserInput] = useState('')
+  const [userFilter, setUserFilter] = useState('')
   
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -58,7 +60,7 @@ function DeleteProductManagementPage() {
   // 컴포넌트 마운트 시 목록 조회
   useEffect(() => {
     loadProducts()
-  }, [delTypeFilter, productNameFilter])
+  }, [delTypeFilter, productNameFilter, userFilter])
 
   // 삭제상품 목록 조회
   const loadProducts = async () => {
@@ -70,6 +72,9 @@ function DeleteProductManagementPage() {
       }
       if (productNameFilter) {
         params.append('productName', productNameFilter)
+      }
+      if (userFilter) {
+        params.append('userKeyword', userFilter)
       }
       const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL
       console.log('🗑️ 삭제상품 목록 조회 시작, API URL:', url)
@@ -98,16 +103,23 @@ function DeleteProductManagementPage() {
     }
   }
 
-  // 상품명 검색
-  const handleProductNameSearch = () => {
-    setProductNameFilter(productNameInput.trim())
-    setCurrentPage(1)
-  }
-
   const handleProductNameKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleProductNameSearch()
+      handleSearch()
     }
+  }
+
+  const handleUserKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
+
+  // 통합 검색 (사용자 + 상품명)
+  const handleSearch = () => {
+    setProductNameFilter(productNameInput.trim())
+    setUserFilter(userInput.trim())
+    setCurrentPage(1)
   }
 
   // 이미지 확대
@@ -294,6 +306,15 @@ function DeleteProductManagementPage() {
               <option value="즉시삭제">즉시삭제</option>
               <option value="일괄삭제">일괄삭제</option>
             </select>
+            <label>사용자:</label>
+            <input
+              type="text"
+              className="user-search-input"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={handleUserKeyPress}
+              placeholder="사용자ID/이름 입력"
+            />
             <label>상품명:</label>
             <input
               type="text"
@@ -303,7 +324,7 @@ function DeleteProductManagementPage() {
               onKeyDown={handleProductNameKeyPress}
               placeholder="상품명 입력"
             />
-            <button type="button" className="product-name-search-btn" onClick={handleProductNameSearch}>
+            <button type="button" className="product-name-search-btn" onClick={handleSearch}>
               검색
             </button>
           </div>
