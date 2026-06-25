@@ -74,6 +74,38 @@
   border-color: #1976d2;
 }
 
+.product-name-search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  min-width: 270px;
+  transition: all 0.2s;
+}
+
+.product-name-search-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.product-name-search-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1976d2;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.product-name-search-btn:hover {
+  background: #1565c0;
+}
+
 .table-header h3 {
   margin: 0;
   font-size: 18px;
@@ -147,13 +179,14 @@
 .delete-product-table th:nth-child(1) { width: 40px; }  /* 순번 */
 .delete-product-table th:nth-child(2) { width: 70px; }  /* 사용자 */
 .delete-product-table th:nth-child(3) { width: 90px; }  /* 삭제유형 */
-.delete-product-table th:nth-child(4) { width: 100px; } /* 삭제사유 */
+.delete-product-table th:nth-child(4) { width: 130px; } /* 삭제사유 */
 .delete-product-table th:nth-child(5) { width: 70px; }  /* 상품이미지 */
-.delete-product-table th:nth-child(6) { width: auto; }  /* 상품명 (남은 공간) */
+.delete-product-table th:nth-child(6) { width: 250px; } /* 상품명 */
 .delete-product-table th:nth-child(7) { width: 80px; }  /* 삭제여부 */
 .delete-product-table th:nth-child(8) { width: 130px; } /* 삭제요청일 */
 .delete-product-table th:nth-child(9) { width: 130px; } /* 삭제일자 */
-.delete-product-table th:nth-child(10) { width: 100px; } /* 전체삭제요청 */
+.delete-product-table th:nth-child(10) { width: 95px; } /* 전체삭제요청 */
+.delete-product-table th:nth-child(11) { width: 95px; } /* 삭제확인 */
 
 .delete-product-table td {
   padding: 12px 10px;
@@ -290,6 +323,46 @@
 .delete-all-btn.completed:hover {
   transform: none;
   box-shadow: 0 2px 4px rgba(135, 206, 235, 0.3);
+}
+
+/* 삭제확인 버튼 */
+.delete-confirm-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(67, 160, 71, 0.3);
+  white-space: nowrap;
+}
+
+.delete-confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(67, 160, 71, 0.4);
+}
+
+.delete-confirm-btn.cancel {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+}
+
+.delete-confirm-btn.cancel:hover {
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+}
+
+.delete-confirm-btn.completed {
+  background: linear-gradient(135deg, #bdbdbd 0%, #9e9e9e 100%);
+  cursor: default;
+  box-shadow: 0 2px 4px rgba(158, 158, 158, 0.3);
+}
+
+.delete-confirm-btn.completed:hover {
+  transform: none;
+  box-shadow: 0 2px 4px rgba(158, 158, 158, 0.3);
 }
 
 /* 이미지 확대 모달 */

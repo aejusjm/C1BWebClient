@@ -13,6 +13,7 @@ interface DeleteProduct {
   gu_seq: number
   del_reason: string
   del_yn: string
+  del_confirm: string
   del_type: string
   input_date: string | null
   del_date: string | null
@@ -44,6 +45,8 @@ function DeleteProductManagementPage() {
   
   // 삭제유형 필터 상태
   const [delTypeFilter, setDelTypeFilter] = useState<string>('')
+  const [productNameInput, setProductNameInput] = useState('')
+  const [productNameFilter, setProductNameFilter] = useState('')
   
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -55,16 +58,20 @@ function DeleteProductManagementPage() {
   // 컴포넌트 마운트 시 목록 조회
   useEffect(() => {
     loadProducts()
-  }, [delTypeFilter])
+  }, [delTypeFilter, productNameFilter])
 
   // 삭제상품 목록 조회
   const loadProducts = async () => {
     try {
       setLoading(true)
-      let url = API_URL
+      const params = new URLSearchParams()
       if (delTypeFilter) {
-        url += `?delType=${encodeURIComponent(delTypeFilter)}`
+        params.append('delType', delTypeFilter)
       }
+      if (productNameFilter) {
+        params.append('productName', productNameFilter)
+      }
+      const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL
       console.log('🗑️ 삭제상품 목록 조회 시작, API URL:', url)
       const response = await fetch(url)
       
@@ -88,6 +95,18 @@ function DeleteProductManagementPage() {
       await showAlert('삭제상품 목록을 불러오는 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 상품명 검색
+  const handleProductNameSearch = () => {
+    setProductNameFilter(productNameInput.trim())
+    setCurrentPage(1)
+  }
+
+  const handleProductNameKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleProductNameSearch()
     }
   }
 
@@ -153,6 +172,68 @@ function DeleteProductManagementPage() {
     }
   }
 
+  // 삭제확인 처리
+  const handleDeleteConfirm = async (seq: number) => {
+    const confirmed = await showConfirm('삭제확인 처리하시겠습니까?')
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`${API_URL}/${seq}/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        await showAlert('삭제확인 처리되었습니다.')
+        loadProducts()
+      } else {
+        await showAlert(result.message || '삭제확인 처리 중 오류가 발생했습니다.')
+      }
+    } catch (error) {
+      console.error('삭제확인 처리 오류:', error)
+      await showAlert('삭제확인 처리 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 삭제확인 취소
+  const handleDeleteConfirmCancel = async (seq: number) => {
+    const confirmed = await showConfirm('삭제확인을 취소하시겠습니까?')
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`${API_URL}/${seq}/cancel-confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        await showAlert('삭제확인이 취소되었습니다.')
+        loadProducts()
+      } else {
+        await showAlert(result.message || '삭제확인 취소 중 오류가 발생했습니다.')
+      }
+    } catch (error) {
+      console.error('삭제확인 취소 오류:', error)
+      await showAlert('삭제확인 취소 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const hasDelDate = (delDate: string | null) => Boolean(delDate)
+
   // 페이징 계산
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
@@ -213,6 +294,18 @@ function DeleteProductManagementPage() {
               <option value="즉시삭제">즉시삭제</option>
               <option value="일괄삭제">일괄삭제</option>
             </select>
+            <label>상품명:</label>
+            <input
+              type="text"
+              className="product-name-search-input"
+              value={productNameInput}
+              onChange={(e) => setProductNameInput(e.target.value)}
+              onKeyDown={handleProductNameKeyPress}
+              placeholder="상품명 입력"
+            />
+            <button type="button" className="product-name-search-btn" onClick={handleProductNameSearch}>
+              검색
+            </button>
           </div>
           <div className="items-per-page">
             <label>페이지당 항목:</label>
@@ -241,12 +334,13 @@ function DeleteProductManagementPage() {
                 <th>삭제요청일</th>
                 <th>삭제일자</th>
                 <th>전체삭제요청</th>
+                <th>삭제확인</th>
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="no-data">
+                  <td colSpan={11} className="no-data">
                     {loading ? '로딩 중...' : '삭제 요청된 상품이 없습니다.'}
                   </td>
                 </tr>
@@ -278,7 +372,7 @@ function DeleteProductManagementPage() {
                         }}
                       />
                     </td>
-                    <td className="product-name-cell">{product.good_name}</td>
+                    <td className="product-name-cell" title={product.good_name}>{product.good_name}</td>
                     <td>
                       <span className={`status-badge ${product.del_yn === 'Y' ? 'deleted' : 'pending'}`}>
                         {product.del_yn === 'Y' ? '삭제완료' : '대기중'}
@@ -302,6 +396,34 @@ function DeleteProductManagementPage() {
                           onClick={() => handleDeleteAll(product.seq)}
                         >
                           전체삭제
+                        </button>
+                      )}
+                    </td>
+                    <td>
+                      {product.del_type === '일괄삭제' ? (
+                        <span style={{ color: '#999' }}>-</span>
+                      ) : product.del_confirm === 'Y' ? (
+                        hasDelDate(product.del_date) ? (
+                          <button
+                            className="delete-confirm-btn completed"
+                            disabled
+                          >
+                            확인완료
+                          </button>
+                        ) : (
+                          <button
+                            className="delete-confirm-btn cancel"
+                            onClick={() => handleDeleteConfirmCancel(product.seq)}
+                          >
+                            확인취소
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          className="delete-confirm-btn"
+                          onClick={() => handleDeleteConfirm(product.seq)}
+                        >
+                          삭제확인
                         </button>
                       )}
                     </td>

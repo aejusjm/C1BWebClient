@@ -6,17 +6,24 @@ const { getConnection, sql } = require('../config/database');
 // 삭제상품 목록 조회 API
 router.get('/', async (req, res) => {
   try {
-    const { delType } = req.query;
+    const { delType, productName } = req.query;
     
-    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType);
+    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType, 'productName:', productName);
     
     let delTypeCondition = '';
     if (delType) {
       delTypeCondition = `AND A.del_type = N'${delType}'`;
     }
-    
+
+    let productNameCondition = '';
     const pool = await getConnection();
-    const result = await pool.request()
+    const request = pool.request();
+    if (productName && String(productName).trim()) {
+      productNameCondition = 'AND B.good_name LIKE @productName';
+      request.input('productName', sql.NVarChar, `%${String(productName).trim()}%`);
+    }
+    
+    const result = await request
       .query(`
         SELECT 
           A.seq,
@@ -26,6 +33,7 @@ router.get('/', async (req, res) => {
           A.del_reason,
           A.del_yn,
           A.del_type,
+          A.del_confirm,
           A.del_date,
           A.input_date,
           B.gm_seq,
@@ -48,6 +56,7 @@ router.get('/', async (req, res) => {
                 ON A.user_id = D.user_id
         WHERE 1=1
         ${delTypeCondition}
+        ${productNameCondition}
         ORDER BY A.seq DESC
       `);
     
@@ -102,6 +111,73 @@ router.put('/:seq', async (req, res) => {
   }
 });
 
+// 삭제확인 처리 API
+router.put('/:seq/confirm', async (req, res) => {
+  try {
+    const { seq } = req.params;
+
+    const pool = await getConnection();
+
+    await pool.request()
+      .input('seq', sql.Int, seq)
+      .query(`
+        UPDATE tb_del_request
+        SET del_confirm = 'Y'
+        WHERE seq = @seq
+      `);
+
+    res.json({
+      success: true,
+      message: '삭제확인 처리되었습니다.'
+    });
+  } catch (error) {
+    console.error('삭제확인 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '삭제확인 처리 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
+// 삭제확인 취소 API
+router.put('/:seq/cancel-confirm', async (req, res) => {
+  try {
+    const { seq } = req.params;
+
+    const pool = await getConnection();
+
+    const result = await pool.request()
+      .input('seq', sql.Int, seq)
+      .query(`
+        UPDATE tb_del_request
+        SET del_confirm = 'N'
+        WHERE seq = @seq
+          AND del_confirm = 'Y'
+          AND del_date IS NULL
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '확인취소할 수 없습니다. 삭제일자가 있는 경우 확인취소가 불가합니다.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '삭제확인이 취소되었습니다.'
+    });
+  } catch (error) {
+    console.error('삭제확인 취소 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '삭제확인 취소 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // 전체 삭제 요청 API
 router.post('/delete-all', async (req, res) => {
   try {
@@ -149,6 +225,17 @@ router.post('/delete-all', async (req, res) => {
       .query(insertQuery);
     
     console.log('🗑️ 전체 삭제 요청 완료 - 추가된 레코드 수:', result.rowsAffected[0]);
+
+    // 전체삭제 요청 시 해당 항목의 삭제확인도 함께 처리
+    await pool.request()
+      .input('seq', sql.Int, seq)
+      .query(`
+        UPDATE tb_del_request
+        SET del_confirm = 'Y'
+        WHERE seq = @seq
+      `);
+
+    console.log('🗑️ 삭제확인 처리 완료 - seq:', seq);
     
     // tb_good_master 테이블 업데이트
     const updateMasterQuery = `

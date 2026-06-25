@@ -15,6 +15,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Bar } from 'react-chartjs-2'
 import './DailySalesStatsPage.css'
 
@@ -73,6 +74,92 @@ interface GroupedData {
   }
 }
 
+const DAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+
+const TOTAL_CHART_BG_COLORS = [
+  'rgba(244, 67, 54, 0.4)',
+  'rgba(255, 152, 0, 0.9)',
+  'rgba(233, 30, 99, 0.4)',
+  'rgba(76, 175, 80, 0.4)',
+  'rgba(255, 193, 7, 0.4)',
+  'rgba(33, 150, 243, 0.4)',
+  'rgba(156, 39, 176, 0.4)'
+]
+
+const TOTAL_CHART_BG_SELECTED = [
+  'rgba(244, 67, 54, 0.95)',
+  'rgba(255, 152, 0, 1)',
+  'rgba(233, 30, 99, 0.95)',
+  'rgba(76, 175, 80, 0.95)',
+  'rgba(255, 193, 7, 0.95)',
+  'rgba(33, 150, 243, 0.95)',
+  'rgba(156, 39, 176, 0.95)'
+]
+
+const TOTAL_CHART_BORDER_COLORS = [
+  'rgba(244, 67, 54, 0.8)',
+  'rgba(255, 152, 0, 1)',
+  'rgba(233, 30, 99, 0.8)',
+  'rgba(76, 175, 80, 0.8)',
+  'rgba(255, 193, 7, 0.8)',
+  'rgba(33, 150, 243, 0.8)',
+  'rgba(156, 39, 176, 0.8)'
+]
+
+const TOTAL_CHART_BORDER_SELECTED = [
+  'rgba(244, 67, 54, 1)',
+  'rgba(255, 87, 34, 1)',
+  'rgba(233, 30, 99, 1)',
+  'rgba(56, 142, 60, 1)',
+  'rgba(255, 160, 0, 1)',
+  'rgba(25, 118, 210, 1)',
+  'rgba(123, 31, 162, 1)'
+]
+
+function parseDateFromLabel(dateStr: string): Date {
+  if (dateStr.includes('(주)')) {
+    return new Date(dateStr.split(' ')[0])
+  }
+  if (dateStr.length === 7) {
+    return new Date(`${dateStr}-01`)
+  }
+  return new Date(dateStr)
+}
+
+function getDayOfWeekFromLabel(dateStr: string): number {
+  return parseDateFromLabel(dateStr).getDay()
+}
+
+function getTotalChartBackgroundColors(dates: string[], selectedWeekday: number | null): string[] {
+  return dates.map(dateStr => {
+    const dayOfWeek = getDayOfWeekFromLabel(dateStr)
+    const isSelected = selectedWeekday !== null && dayOfWeek === selectedWeekday
+    const isDimmed = selectedWeekday !== null && dayOfWeek !== selectedWeekday
+    if (isSelected) return TOTAL_CHART_BG_SELECTED[dayOfWeek]
+    if (isDimmed) return 'rgba(200, 200, 200, 0.25)'
+    return TOTAL_CHART_BG_COLORS[dayOfWeek]
+  })
+}
+
+function getTotalChartBorderColors(dates: string[], selectedWeekday: number | null): string[] {
+  return dates.map(dateStr => {
+    const dayOfWeek = getDayOfWeekFromLabel(dateStr)
+    const isSelected = selectedWeekday !== null && dayOfWeek === selectedWeekday
+    const isDimmed = selectedWeekday !== null && dayOfWeek !== selectedWeekday
+    if (isSelected) return TOTAL_CHART_BORDER_SELECTED[dayOfWeek]
+    if (isDimmed) return 'rgba(200, 200, 200, 0.4)'
+    return TOTAL_CHART_BORDER_COLORS[dayOfWeek]
+  })
+}
+
+function getTotalChartBorderWidths(dates: string[], selectedWeekday: number | null): number[] {
+  return dates.map(dateStr => {
+    const dayOfWeek = getDayOfWeekFromLabel(dateStr)
+    const isSelected = selectedWeekday !== null && dayOfWeek === selectedWeekday
+    return isSelected ? 4 : 2
+  })
+}
+
 function DailySalesStatsPage() {
   const { userInfo } = useUser()
   const { showAlert } = useAlert()
@@ -94,6 +181,7 @@ function DailySalesStatsPage() {
   const [groupedData, setGroupedData] = useState<GroupedData[]>([])
   const [userChartData, setUserChartData] = useState<UserChartData[]>([])
   const [totalChartData, setTotalChartData] = useState<{ dates: string[], sales: number[] }>({ dates: [], sales: [] })
+  const [selectedWeekday, setSelectedWeekday] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
   // 데이터 로드
@@ -103,6 +191,10 @@ function DailySalesStatsPage() {
       loadUserChartData()
     }
   }, [dateFilter, useCustomDate, startDate, endDate, aggregationType, userInfo?.userId])
+
+  useEffect(() => {
+    setSelectedWeekday(null)
+  }, [totalChartData.dates, dateFilter, useCustomDate, startDate, endDate, aggregationType])
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -738,64 +830,30 @@ function DailySalesStatsPage() {
             </h3>
             <div className="total-chart-wrapper">
               <Bar
+                plugins={[ChartDataLabels]}
                 data={{
                   labels: totalChartData.dates,
                   datasets: [
                     {
                       label: '전체 매출 (만원)',
                       data: totalChartData.sales.map(s => Math.floor(s / 10000)),
-                      backgroundColor: totalChartData.dates.map(dateStr => {
-                        // 날짜 문자열에서 요일 추출
-                        let date: Date
-                        if (dateStr.includes('(주)')) {
-                          date = new Date(dateStr.split(' ')[0])
-                        } else if (dateStr.length === 7) {
-                          date = new Date(dateStr + '-01')
-                        } else {
-                          date = new Date(dateStr)
-                        }
-                        
-                        const dayOfWeek = date.getDay()
-                        const colors = [
-                          'rgba(244, 67, 54, 0.4)',   // 일요일 - 연한 빨강
-                          'rgba(255, 152, 0, 0.9)',   // 월요일 - 진한 주황
-                          'rgba(233, 30, 99, 0.4)',   // 화요일 - 연한 분홍
-                          'rgba(76, 175, 80, 0.4)',   // 수요일 - 연한 초록
-                          'rgba(255, 193, 7, 0.4)',   // 목요일 - 연한 노랑
-                          'rgba(33, 150, 243, 0.4)',  // 금요일 - 연한 파랑
-                          'rgba(156, 39, 176, 0.4)'   // 토요일 - 연한 보라
-                        ]
-                        return colors[dayOfWeek]
-                      }),
-                      borderColor: totalChartData.dates.map(dateStr => {
-                        let date: Date
-                        if (dateStr.includes('(주)')) {
-                          date = new Date(dateStr.split(' ')[0])
-                        } else if (dateStr.length === 7) {
-                          date = new Date(dateStr + '-01')
-                        } else {
-                          date = new Date(dateStr)
-                        }
-                        
-                        const dayOfWeek = date.getDay()
-                        const colors = [
-                          'rgba(244, 67, 54, 0.8)',   // 일요일
-                          'rgba(255, 152, 0, 1)',     // 월요일 - 진한 테두리
-                          'rgba(233, 30, 99, 0.8)',   // 화요일
-                          'rgba(76, 175, 80, 0.8)',   // 수요일
-                          'rgba(255, 193, 7, 0.8)',   // 목요일
-                          'rgba(33, 150, 243, 0.8)',  // 금요일
-                          'rgba(156, 39, 176, 0.8)'   // 토요일
-                        ]
-                        return colors[dayOfWeek]
-                      }),
-                      borderWidth: 2
+                      backgroundColor: getTotalChartBackgroundColors(totalChartData.dates, selectedWeekday),
+                      borderColor: getTotalChartBorderColors(totalChartData.dates, selectedWeekday),
+                      borderWidth: getTotalChartBorderWidths(totalChartData.dates, selectedWeekday)
                     }
                   ]
                 }}
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
+                  onClick: (_event, elements) => {
+                    if (elements.length === 0) return
+                    const index = elements[0].index
+                    const dateStr = totalChartData.dates[index]
+                    if (!dateStr) return
+                    const dayOfWeek = getDayOfWeekFromLabel(dateStr)
+                    setSelectedWeekday(prev => (prev === dayOfWeek ? null : dayOfWeek))
+                  },
                   plugins: {
                     legend: {
                       display: false
@@ -804,23 +862,36 @@ function DailySalesStatsPage() {
                       callbacks: {
                         title: (context) => {
                           const dateStr = context[0].label
-                          let date: Date
-                          if (dateStr.includes('(주)')) {
-                            date = new Date(dateStr.split(' ')[0])
-                          } else if (dateStr.length === 7) {
-                            date = new Date(dateStr + '-01')
-                          } else {
-                            date = new Date(dateStr)
-                          }
-                          
-                          const dayOfWeek = date.getDay()
-                          const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-                          return `${dateStr} (${dayNames[dayOfWeek]})`
+                          const dayOfWeek = getDayOfWeekFromLabel(dateStr)
+                          return `${dateStr} (${DAY_NAMES[dayOfWeek]})`
                         },
                         label: (context) => {
                           const valueInWon = (context.parsed.y || 0) * 10000
                           return `전체 매출: ${Math.floor(valueInWon / 10000).toLocaleString('ko-KR')} 만원`
                         }
+                      }
+                    },
+                    datalabels: {
+                      display: (context) => {
+                        const value = context.dataset.data[context.dataIndex] as number
+                        if (!value) return false
+                        if (selectedWeekday === null) return true
+                        const dateStr = totalChartData.dates[context.dataIndex]
+                        if (!dateStr) return false
+                        return getDayOfWeekFromLabel(dateStr) === selectedWeekday
+                      },
+                      color: '#333333',
+                      backgroundColor: 'transparent',
+                      font: {
+                        size: 11,
+                        weight: 'normal'
+                      },
+                      anchor: 'center',
+                      align: 'center',
+                      offset: 0,
+                      formatter: (value: number) => {
+                        if (!value) return ''
+                        return Number(value).toLocaleString('ko-KR')
                       }
                     }
                   },
