@@ -16,6 +16,8 @@ interface OrderSalesSummaryProps {
   useCustomDate?: boolean
   startDate?: string
   endDate?: string
+  subscriptionBasis?: boolean
+  onSubscriptionBasis?: () => void
 }
 
 function OrderSalesSummary({ 
@@ -26,18 +28,22 @@ function OrderSalesSummary({
   stores,
   useCustomDate = false,
   startDate = '',
-  endDate = ''
+  endDate = '',
+  subscriptionBasis = false,
+  onSubscriptionBasis
 }: OrderSalesSummaryProps) {
   const { userInfo } = useUser()
   const [totalSales, setTotalSales] = useState(0)
   const [rateOfReturn, setRateOfReturn] = useState(0.27) // 기본값 27%
+  const [baseSubAmt, setBaseSubAmt] = useState(0) // 기준구독계산금액
+  const [subFee, setSubFee] = useState(0) // 구독료
 
-  // 기준정보에서 수익율 로드
+  // 기준정보에서 수익율/기준구독계산금액/구독료 로드
   useEffect(() => {
-    loadRateOfReturn()
+    loadStandardInfo()
   }, [])
 
-  const loadRateOfReturn = async () => {
+  const loadStandardInfo = async () => {
     try {
       const response = await fetch(STANDARD_INFO_URL)
       
@@ -47,14 +53,18 @@ function OrderSalesSummary({
       
       const result = await response.json()
       
-      if (result.success && result.data?.rateOfReturn) {
-        // rateOfReturn 값을 숫자로 변환하고 퍼센트로 사용 (예: 27 -> 0.27)
-        const rate = parseFloat(result.data.rateOfReturn) / 100
-        setRateOfReturn(rate)
+      if (result.success && result.data) {
+        if (result.data.rateOfReturn) {
+          // rateOfReturn 값을 숫자로 변환하고 퍼센트로 사용 (예: 27 -> 0.27)
+          const rate = parseFloat(result.data.rateOfReturn) / 100
+          setRateOfReturn(rate)
+        }
+        setBaseSubAmt(parseFloat(result.data.baseSubAmt) || 0)
+        setSubFee(parseFloat(result.data.subFee) || 0)
       }
     } catch (error) {
-      console.error('수익율 로드 오류:', error)
-      // 오류 시 기본값 27% 사용
+      console.error('기준정보 로드 오류:', error)
+      // 오류 시 기본값 사용
     }
   }
 
@@ -110,6 +120,16 @@ function OrderSalesSummary({
     return Math.floor((totalSales * rateOfReturn) / 10000).toLocaleString()
   }
 
+  // 예상구독료 계산 (만원 단위) - 사용자별 매출 '구독료' 컬럼과 동일 로직
+  // 총매출 >= 기준구독계산금액 → 구독료
+  // 총매출 < 기준구독계산금액 → 총매출 * 수익율 / 2 (예상수익 / 2)
+  const calculateExpectedSubscription = () => {
+    const subscription = totalSales >= baseSubAmt
+      ? subFee
+      : (totalSales * rateOfReturn) / 2
+    return Math.floor(subscription / 10000).toLocaleString()
+  }
+
   return (
     <div className="order-sales-summary">
       <h3 className="summary-title">📊 주문&매출 현황</h3>
@@ -125,6 +145,23 @@ function OrderSalesSummary({
           <span className="summary-label">예상수익</span>
           <span className="summary-value">
             <strong>{calculateExpectedProfit()}</strong> 만원
+          </span>
+        </div>
+        <div className="summary-divider"></div>
+        <div className="summary-item">
+          <span className="summary-label">예상구독료</span>
+          <span className="summary-value">
+            {subscriptionBasis ? (
+              <><strong>{calculateExpectedSubscription()}</strong> 만원</>
+            ) : (
+              <button
+                type="button"
+                className="summary-placeholder-btn"
+                onClick={onSubscriptionBasis}
+              >
+                구독기준선택
+              </button>
+            )}
           </span>
         </div>
       </div>

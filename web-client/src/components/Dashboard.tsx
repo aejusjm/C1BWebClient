@@ -47,6 +47,8 @@ function Dashboard({ onNavigate }: DashboardProps) {
   const [stores, setStores] = useState<Array<{user_id: string, biz_idx: number, store_name: string, market_type: string}>>([])
   // 스토어 드롭다운 상태
   const [showStoreDropdown, setShowStoreDropdown] = useState(false)
+  // 구독기준 선택 여부
+  const [subscriptionBasis, setSubscriptionBasis] = useState(false)
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
   // 모달 내 임시 날짜
@@ -253,13 +255,35 @@ function Dashboard({ onNavigate }: DashboardProps) {
     setStartDate(formatDateToString(tempStartDate))
     setEndDate(formatDateToString(tempEndDate))
     setUseCustomDate(true)
+    setSubscriptionBasis(false)
     setShowDateModal(false)
+  }
+
+  // 구독기준 날짜 선택 (16일 기준)
+  const handleSubscriptionBasis = () => {
+    const today = new Date()
+    const day = today.getDate()
+
+    let start: Date
+    if (day >= 16) {
+      // 이번달 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth(), 16)
+    } else {
+      // 전월 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 16)
+    }
+
+    setStartDate(formatDateToString(start))
+    setEndDate(formatDateToString(today))
+    setUseCustomDate(true)
+    setSubscriptionBasis(true)
   }
 
   // 날짜 필터 변경
   const handleDateFilterChange = (filter: string) => {
     setDateFilter(filter)
     setUseCustomDate(false)
+    setSubscriptionBasis(false)
   }
 
   return (
@@ -305,10 +329,16 @@ function Dashboard({ onNavigate }: DashboardProps) {
             지난달
           </button>
           <button 
-            className={`date-picker-btn ${useCustomDate ? 'active' : ''}`}
+            className={`date-picker-btn ${useCustomDate && !subscriptionBasis ? 'active' : ''}`}
             onClick={openDateModal}
           >
             📅 기간선택
+          </button>
+          <button 
+            className={`date-picker-btn ${subscriptionBasis ? 'active' : ''}`}
+            onClick={handleSubscriptionBasis}
+          >
+            📌 구독기준
           </button>
         </div>
 
@@ -446,6 +476,8 @@ function Dashboard({ onNavigate }: DashboardProps) {
           useCustomDate={useCustomDate}
           startDate={startDate}
           endDate={endDate}
+          subscriptionBasis={subscriptionBasis}
+          onSubscriptionBasis={handleSubscriptionBasis}
         />
       </div>
 

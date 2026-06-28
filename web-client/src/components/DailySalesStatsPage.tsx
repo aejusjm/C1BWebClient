@@ -5,7 +5,6 @@ import { useAlert } from '../contexts/AlertContext'
 import DatePicker from 'react-datepicker'
 import { ko } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
-import * as XLSX from 'xlsx'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -167,6 +166,7 @@ function DailySalesStatsPage() {
   // 필터 상태
   const [dateFilter, setDateFilter] = useState('thisMonth')
   const [useCustomDate, setUseCustomDate] = useState(false)
+  const [subscriptionBasis, setSubscriptionBasis] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [aggregationType, setAggregationType] = useState<'day' | 'week' | 'month'>('day')
@@ -260,8 +260,30 @@ function DailySalesStatsPage() {
     setStartDate(formatDateToString(tempStartDate))
     setEndDate(formatDateToString(tempEndDate))
     setUseCustomDate(true)
+    setSubscriptionBasis(false)
     setDateFilter('custom')
     closeDateModal()
+  }
+
+  // 구독기준 날짜 선택 (16일 기준)
+  const handleSubscriptionBasis = () => {
+    const today = new Date()
+    const day = today.getDate()
+
+    let start: Date
+    if (day >= 16) {
+      // 이번달 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth(), 16)
+    } else {
+      // 전월 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 16)
+    }
+
+    setStartDate(formatDateToString(start))
+    setEndDate(formatDateToString(today))
+    setUseCustomDate(true)
+    setSubscriptionBasis(true)
+    setDateFilter('custom')
   }
 
   // 통계 데이터 로드
@@ -526,126 +548,6 @@ function DailySalesStatsPage() {
     return { marketTotals, marketGrandTotals, grandTotal }
   }
 
-  // 엑셀 다운로드
-  const handleExcelDownload = () => {
-    if (stats.length === 0) {
-      showAlert('다운로드할 데이터가 없습니다.')
-      return
-    }
-
-    const excelData: any[] = []
-
-    // 일자별 데이터
-    groupedData.forEach(dayData => {
-      Object.entries(dayData.markets).forEach(([marketName, marketData]) => {
-        marketData.stores.forEach((store, storeIndex) => {
-          const row: any = {
-            '일자': storeIndex === 0 ? dayData.date : '',
-            '마켓': storeIndex === 0 ? marketName : ''
-          }
-          
-          // 스토어별
-          row['스토어별-주문수'] = store.order_cnt
-          row['스토어별-매출'] = store.pay_anmt
-          row['스토어별-예상수익'] = store.pre_amt
-          
-          // 마켓별 (첫 번째 스토어에만)
-          if (storeIndex === 0) {
-            row['마켓별-주문수'] = marketData.marketTotal.order_cnt
-            row['마켓별-매출'] = marketData.marketTotal.pay_anmt
-            row['마켓별-예상수익'] = marketData.marketTotal.pre_amt
-          } else {
-            row['마켓별-주문수'] = ''
-            row['마켓별-매출'] = ''
-            row['마켓별-예상수익'] = ''
-          }
-          
-          excelData.push(row)
-        })
-      })
-      
-      // 일 합계 행 추가
-      const dayTotalRow: any = {
-        '일자': '',
-        '마켓': '',
-        '스토어별-주문수': '',
-        '스토어별-매출': '',
-        '스토어별-예상수익': '',
-        '마켓별-주문수': '',
-        '마켓별-매출': '',
-        '마켓별-예상수익': '',
-        '일합계-주문수': dayData.dayTotal.order_cnt,
-        '일합계-매출': dayData.dayTotal.pay_anmt,
-        '일합계-예상수익': dayData.dayTotal.pre_amt
-      }
-      excelData.push(dayTotalRow)
-    })
-
-    // 빈 행
-    excelData.push({})
-
-    // 전체 합계 (마켓별, 스토어별)
-    const { marketTotals: totals, marketGrandTotals: marketGT, grandTotal: gt } = calculateGrandTotal()
-    
-    Object.entries(totals).forEach(([marketName, stores], marketIndex) => {
-      const storeEntries = Object.entries(stores)
-      
-      storeEntries.forEach(([_storeName, storeTotal], storeIndex) => {
-        const row: any = {}
-        
-        // 일자 (첫 번째 마켓의 첫 번째 스토어에만)
-        if (marketIndex === 0 && storeIndex === 0) {
-          row['일자'] = '합계'
-        } else {
-          row['일자'] = ''
-        }
-        
-        // 마켓 (각 마켓의 첫 번째 스토어에만)
-        if (storeIndex === 0) {
-          row['마켓'] = marketName
-        } else {
-          row['마켓'] = ''
-        }
-        
-        // 스토어별
-        row['스토어별-주문수'] = storeTotal.order_cnt
-        row['스토어별-매출'] = storeTotal.pay_anmt
-        row['스토어별-예상수익'] = storeTotal.pre_amt
-        
-        // 마켓별 (각 마켓의 첫 번째 스토어에만)
-        if (storeIndex === 0) {
-          row['마켓별-주문수'] = marketGT[marketName].order_cnt
-          row['마켓별-매출'] = marketGT[marketName].pay_anmt
-          row['마켓별-예상수익'] = marketGT[marketName].pre_amt
-        } else {
-          row['마켓별-주문수'] = ''
-          row['마켓별-매출'] = ''
-          row['마켓별-예상수익'] = ''
-        }
-        
-        // 일합계 (첫 번째 마켓의 첫 번째 스토어에만)
-        if (marketIndex === 0 && storeIndex === 0) {
-          row['일합계-주문수'] = gt.order_cnt
-          row['일합계-매출'] = gt.pay_anmt
-          row['일합계-예상수익'] = gt.pre_amt
-        } else {
-          row['일합계-주문수'] = ''
-          row['일합계-매출'] = ''
-          row['일합계-예상수익'] = ''
-        }
-        
-        excelData.push(row)
-      })
-    })
-
-    const ws = XLSX.utils.json_to_sheet(excelData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '일자별 매출통계')
-
-    const fileName = `일자별_매출통계_${formatDateToString(new Date())}.xlsx`
-    XLSX.writeFile(wb, fileName)
-  }
-
   const { marketTotals, marketGrandTotals, grandTotal } = calculateGrandTotal()
 
   return (
@@ -661,37 +563,37 @@ function DailySalesStatsPage() {
         <div className="date-filters">
           <button 
             className={dateFilter === 'today' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('today'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('today'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             오늘
           </button>
           <button 
             className={dateFilter === 'yesterday' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('yesterday'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('yesterday'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             어제
           </button>
           <button 
             className={dateFilter === 'thisWeek' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('thisWeek'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('thisWeek'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             이번주
           </button>
           <button 
             className={dateFilter === 'lastWeek' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('lastWeek'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('lastWeek'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             지난주
           </button>
           <button 
             className={dateFilter === 'thisMonth' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('thisMonth'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('thisMonth'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             이번달
           </button>
           <button 
             className={dateFilter === 'lastMonth' && !useCustomDate ? 'active' : ''}
-            onClick={() => { setDateFilter('lastMonth'); setUseCustomDate(false); }}
+            onClick={() => { setDateFilter('lastMonth'); setUseCustomDate(false); setSubscriptionBasis(false); }}
           >
             지난달
           </button>
@@ -699,16 +601,22 @@ function DailySalesStatsPage() {
             <button 
               key={monthInfo.key}
               className={dateFilter === monthInfo.key && !useCustomDate ? 'active' : ''}
-              onClick={() => { setDateFilter(monthInfo.key); setUseCustomDate(false); }}
+              onClick={() => { setDateFilter(monthInfo.key); setUseCustomDate(false); setSubscriptionBasis(false); }}
             >
               {monthInfo.label}
             </button>
           ))}
           <button 
-            className={`date-picker-btn ${useCustomDate ? 'active' : ''}`}
+            className={`date-picker-btn ${useCustomDate && !subscriptionBasis ? 'active' : ''}`}
             onClick={openDateModal}
           >
             📅 기간선택
+          </button>
+          <button 
+            className={`date-picker-btn ${subscriptionBasis ? 'active' : ''}`}
+            onClick={handleSubscriptionBasis}
+          >
+            📌 구독기준
           </button>
           {useCustomDate && startDate && endDate && (
             <span className="selected-date-range">
@@ -742,14 +650,6 @@ function DailySalesStatsPage() {
               월
             </button>
           </div>
-        </div>
-
-        <div className="filter-divider"></div>
-
-        <div className="daily-filter-actions">
-          <button className="daily-excel-download-btn" onClick={handleExcelDownload}>
-            📥 엑셀 다운로드
-          </button>
         </div>
       </div>
 

@@ -45,6 +45,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [dateFilter, setDateFilter] = useState('today')
   const [userName, setUserName] = useState('')
   const [useCustomDate, setUseCustomDate] = useState(false)
+  const [subscriptionBasis, setSubscriptionBasis] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [hasSales, setHasSales] = useState(false)
@@ -134,13 +135,35 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
     setStartDate(formatDateToString(tempStartDate))
     setEndDate(formatDateToString(tempEndDate))
     setUseCustomDate(true)
+    setSubscriptionBasis(false)
     setShowDateModal(false)
+  }
+
+  // 구독기준 날짜 선택 (16일 기준)
+  const handleSubscriptionBasis = () => {
+    const today = new Date()
+    const day = today.getDate()
+
+    let start: Date
+    if (day >= 16) {
+      // 이번달 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth(), 16)
+    } else {
+      // 전월 16일 ~ 오늘
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 16)
+    }
+
+    setStartDate(formatDateToString(start))
+    setEndDate(formatDateToString(today))
+    setUseCustomDate(true)
+    setSubscriptionBasis(true)
   }
 
   // 날짜 필터 변경
   const handleDateFilterChange = (filter: string) => {
     setDateFilter(filter)
     setUseCustomDate(false)
+    setSubscriptionBasis(false)
   }
 
   // 통계 데이터 로드
@@ -340,10 +363,16 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
             </button>
           ))}
           <button 
-            className={`date-picker-btn ${useCustomDate ? 'active' : ''}`}
+            className={`date-picker-btn ${useCustomDate && !subscriptionBasis ? 'active' : ''}`}
             onClick={openDateModal}
           >
             📅 기간선택
+          </button>
+          <button 
+            className={`date-picker-btn ${subscriptionBasis ? 'active' : ''}`}
+            onClick={handleSubscriptionBasis}
+          >
+            📌 구독기준
           </button>
           {useCustomDate && startDate && endDate && (
             <span className="selected-date-range">
