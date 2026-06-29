@@ -76,6 +76,14 @@ function App() {
     }
   }, [location.pathname])
 
+  // 토스 구독 결제 리다이렉트(?subscription=success|fail) 진입 시 구독 페이지로 이동
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('subscription')) {
+      setActiveMenu('subscription-plan')
+    }
+  }, [location.search])
+
   // 로그인 처리
   const handleLogin = (userId: string, userName: string, userType: string, endDate: string | null) => {
     const newUserInfo: UserInfo = {

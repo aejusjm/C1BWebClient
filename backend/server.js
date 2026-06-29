@@ -36,6 +36,7 @@ const batchLogManagementRoutes = require('./routes/batchLogManagement');
 const fakePurchaseUserRoutes = require('./routes/fakePurchaseUser');
 const fakePurchaseScheduleRoutes = require('./routes/fakePurchaseSchedule');
 const fakePurchaseInfoRoutes = require('./routes/fakePurchaseInfo');
+const subscriptionRoutes = require('./routes/subscription');
 app.use('/api/auth', authRoutes);
 app.use('/api/image', imageProxyRoutes);
 app.use('/api/standard-info', standardInfoRoutes);
@@ -59,6 +60,7 @@ app.use('/api/batch-logs', batchLogManagementRoutes);
 app.use('/api/fake-purchase-users', fakePurchaseUserRoutes);
 app.use('/api/fake-purchase-schedule', fakePurchaseScheduleRoutes);
 app.use('/api/fake-purchase-info', fakePurchaseInfoRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // 업로드된 파일 정적 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -76,6 +78,14 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📍 http://localhost:${PORT}`);
+
+  // 구독 정기결제 스케줄러 시작
+  try {
+    const { startSubscriptionScheduler } = require('./scheduler/subscriptionScheduler');
+    startSubscriptionScheduler();
+  } catch (error) {
+    console.error('구독 스케줄러 시작 실패:', error);
+  }
 });
 
 // 프로세스 종료 시 데이터베이스 연결 종료

@@ -706,8 +706,25 @@ function OrderPage() {
       const result = await response.json()
 
       if (result.success) {
-        await showAlert('매입 정보가 저장되었습니다.')
+        // 리스트 즉시 반영: 저장한 주문의 매입 필드를 로컬 상태에 바로 업데이트
+        const savedSeq = selectedOrder.seq
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order.seq === savedSeq
+              ? {
+                  ...order,
+                  taobao_order_no: purchaseInfo.taobao_order_no,
+                  taobao_pay_cn: taobaoPayCn,
+                  taobao_pay_kr: taobaoPayKr,
+                  delv_order_no: purchaseInfo.delv_order_no || null,
+                  delv_price: purchaseInfo.delv_price ? parseFloat(purchaseInfo.delv_price) : null
+                }
+              : order
+          )
+        )
         closePurchaseModal()
+        await showAlert('매입 정보가 저장되었습니다.')
+        // 서버와 최종 동기화 (백그라운드)
         loadOrders()
       } else {
         await showAlert(result.message || '매입 정보 저장에 실패했습니다.')
