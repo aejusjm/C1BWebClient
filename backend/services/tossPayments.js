@@ -53,9 +53,38 @@ async function requestBilling(billingKey, params) {
   return data;
 }
 
+// 결제 취소(환불). 부분 취소 시 cancelAmount 지정.
+// params: { cancelReason, cancelAmount? }
+// idempotencyKey: 중복 환불 방지용 멱등키
+async function cancelPayment(paymentKey, params, idempotencyKey) {
+  const headers = {
+    Authorization: getAuthHeader(),
+    'Content-Type': 'application/json'
+  };
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey;
+  }
+
+  const res = await fetch(`${TOSS_API_BASE}/v1/payments/${paymentKey}/cancel`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params)
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const message = data.message || '환불 처리에 실패했습니다.';
+    const err = new Error(message);
+    err.tossResponse = data;
+    throw err;
+  }
+  return data;
+}
+
 module.exports = {
   TOSS_API_BASE,
   getAuthHeader,
   issueBillingKey,
-  requestBilling
+  requestBilling,
+  cancelPayment
 };

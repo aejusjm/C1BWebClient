@@ -41,3 +41,14 @@ BEGIN
     CREATE UNIQUE INDEX UX_tb_subscription_payment_order_id ON tb_subscription_payment (order_id);
 END
 GO
+
+-- 2-1) 환불 관련 컬럼 (기존 테이블에도 idempotent 적용)
+IF COL_LENGTH('tb_subscription_payment', 'refund_amount') IS NULL
+    ALTER TABLE tb_subscription_payment ADD refund_amount INT NOT NULL DEFAULT 0;
+GO
+IF COL_LENGTH('tb_subscription_payment', 'refund_reason') IS NULL
+    ALTER TABLE tb_subscription_payment ADD refund_reason NVARCHAR(500) NULL;
+GO
+IF COL_LENGTH('tb_subscription_payment', 'refunded_at') IS NULL
+    ALTER TABLE tb_subscription_payment ADD refunded_at DATETIME NULL;
+GO

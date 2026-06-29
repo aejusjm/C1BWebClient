@@ -50,6 +50,21 @@ async function createTables() {
     `);
     console.log('✅ tb_subscription_payment 확인/생성 완료');
 
+    // 2-1) 환불 관련 컬럼 추가 (기존 테이블에도 idempotent 적용)
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription_payment', 'refund_amount') IS NULL
+        ALTER TABLE tb_subscription_payment ADD refund_amount INT NOT NULL DEFAULT 0;
+    `);
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription_payment', 'refund_reason') IS NULL
+        ALTER TABLE tb_subscription_payment ADD refund_reason NVARCHAR(500) NULL;
+    `);
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription_payment', 'refunded_at') IS NULL
+        ALTER TABLE tb_subscription_payment ADD refunded_at DATETIME NULL;
+    `);
+    console.log('✅ tb_subscription_payment 환불 컬럼 확인/추가 완료');
+
     console.log('🎉 구독 테이블 생성 작업 완료');
   } catch (error) {
     console.error('❌ 테이블 생성 오류:', error);

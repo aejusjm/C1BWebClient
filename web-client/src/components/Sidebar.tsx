@@ -213,6 +213,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">👥</span> 사용자관리
                 </li>
                 <li 
+                  className={activeMenu === 'subscription-management' ? 'active' : ''}
+                  onClick={() => onMenuChange('subscription-management')}
+                >
+                  <span className="submenu-icon">💳</span> 구독관리
+                </li>
+                <li 
                   className={activeMenu === 'notice-management' ? 'active' : ''}
                   onClick={() => onMenuChange('notice-management')}
                 >

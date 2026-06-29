@@ -5,14 +5,42 @@ const crypto = require('crypto');
 const { getConnection, sql } = require('../config/database');
 const { issueBillingKey, requestBilling } = require('../services/tossPayments');
 
-// 플랜별 실제 청구 금액(원, VAT 포함)
-const PLAN_CONFIG = {
-  BASIC: { amount: 1089000, orderName: 'C1B 기본 플랜' },
-  EXTRA: { amount: 55000, orderName: 'C1B 추가 플랜' }
+// VAT 세율 (10%)
+const VAT_RATE = 0.1;
+
+// 플랜 메타 (주문명 등). 실제 청구 금액은 기준정보(구독료)에서 동적으로 산정.
+const PLAN_META = {
+  BASIC: { orderName: 'C1B 기본 플랜' },
+  EXTRA: { orderName: 'C1B 추가 플랜', baseAmount: 50000 }
 };
 
 function getPlanConfig(plan) {
-  return PLAN_CONFIG[plan] || null;
+  return PLAN_META[plan] || null;
+}
+
+// VAT 포함 금액으로 환산 (원 단위 반올림)
+function applyVat(amount) {
+  return Math.round(Number(amount || 0) * (1 + VAT_RATE));
+}
+
+// 기준정보(tb_setting_info)의 구독료(sub_fee) 조회 (VAT 별도 공급가)
+async function getSubscriptionFee(pool) {
+  const result = await pool.request().query('SELECT TOP 1 sub_fee FROM tb_setting_info');
+  if (result.recordset.length === 0) return 0;
+  return Number(result.recordset[0].sub_fee) || 0;
+}
+
+// 플랜별 VAT 포함 청구 금액 결정 (서버에서 강제)
+// 기본 플랜: 기준정보관리의 '구독료' 기준 / 추가 플랜: 고정 금액 기준
+async function resolvePlanAmount(pool, plan) {
+  if (plan === 'BASIC') {
+    const subFee = await getSubscriptionFee(pool);
+    return applyVat(subFee);
+  }
+  if (plan === 'EXTRA') {
+    return applyVat(PLAN_META.EXTRA.baseAmount);
+  }
+  return 0;
 }
 
 // 고유 주문번호 생성
@@ -84,6 +112,12 @@ router.post('/prepare', async (req, res) => {
 
     const pool = await getConnection();
 
+    // 청구 금액(VAT 포함) 산정 - 기준정보관리의 구독료 기준
+    const amount = await resolvePlanAmount(pool, plan);
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: '구독료가 설정되어 있지 않습니다. 기준정보관리에서 구독료를 입력해주세요.' });
+    }
+
     // 기존 구독 레코드 조회 (customerKey 재사용)
     const existing = await pool.request()
       .input('user_id', sql.NVarChar, userId)
@@ -97,7 +131,7 @@ router.post('/prepare', async (req, res) => {
         .input('user_id', sql.NVarChar, userId)
         .input('customer_key', sql.NVarChar, customerKey)
         .input('plan_type', sql.NVarChar, plan)
-        .input('amount', sql.Int, planConfig.amount)
+        .input('amount', sql.Int, amount)
         .query(`
           UPDATE tb_subscription
           SET plan_type = @plan_type, amount = @amount, status = 'PENDING', updated_at = GETDATE()
@@ -109,14 +143,14 @@ router.post('/prepare', async (req, res) => {
         .input('user_id', sql.NVarChar, userId)
         .input('customer_key', sql.NVarChar, customerKey)
         .input('plan_type', sql.NVarChar, plan)
-        .input('amount', sql.Int, planConfig.amount)
+        .input('amount', sql.Int, amount)
         .query(`
           INSERT INTO tb_subscription (user_id, customer_key, plan_type, amount, status)
           VALUES (@user_id, @customer_key, @plan_type, @amount, 'PENDING')
         `);
     }
 
-    res.json({ success: true, data: { customerKey } });
+    res.json({ success: true, data: { customerKey, amount } });
   } catch (error) {
     console.error('구독 준비 오류:', error);
     res.status(500).json({ success: false, message: '구독 준비 중 오류가 발생했습니다.' });
@@ -134,6 +168,12 @@ router.post('/issue-billing-key', async (req, res) => {
     }
 
     const pool = await getConnection();
+
+    // 청구 금액(VAT 포함) 재산정 - 기준정보관리의 구독료 기준 (서버에서 강제)
+    const amount = await resolvePlanAmount(pool, plan);
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: '구독료가 설정되어 있지 않습니다. 기준정보관리에서 구독료를 입력해주세요.' });
+    }
 
     // 빌링키 발급
     const billing = await issueBillingKey(authKey, customerKey);
@@ -153,7 +193,7 @@ router.post('/issue-billing-key', async (req, res) => {
     const orderId = generateOrderId(userId);
     const payment = await requestBilling(billingKey, {
       customerKey,
-      amount: planConfig.amount,
+      amount,
       orderId,
       orderName: planConfig.orderName
     });
@@ -162,7 +202,7 @@ router.post('/issue-billing-key', async (req, res) => {
     await applySuccessfulPayment(pool, {
       userId,
       planType: plan,
-      amount: planConfig.amount,
+      amount,
       orderId,
       payment
     });
@@ -223,9 +263,13 @@ router.post('/cancel', async (req, res) => {
 
 // 단일 구독 건 결제 실행 (스케줄러/테스트 공용)
 async function chargeSubscription(pool, subscription) {
-  const { user_id: userId, billing_key: billingKey, customer_key: customerKey, plan_type: planType, amount } = subscription;
+  const { user_id: userId, billing_key: billingKey, customer_key: customerKey, plan_type: planType, amount: storedAmount } = subscription;
   const orderName = (getPlanConfig(planType) || {}).orderName || 'C1B 구독';
   const orderId = generateOrderId(userId);
+
+  // 정기결제 시점의 기준정보 구독료(VAT 포함)로 재산정. 미설정 시 저장된 금액 사용.
+  const resolved = await resolvePlanAmount(pool, planType);
+  const amount = resolved && resolved > 0 ? resolved : storedAmount;
 
   try {
     const payment = await requestBilling(billingKey, {

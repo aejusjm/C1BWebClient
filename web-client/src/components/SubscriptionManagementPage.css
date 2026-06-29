@@ -1,0 +1,574 @@
+/* 구독관리 페이지 (삭제상품관리 스타일 기반) */
+.subscription-management-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+/* 페이지 헤더 */
+.subscription-management-page-header {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subscription-management-page .page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.subscription-management-page .summary-info {
+  font-size: 15px;
+  color: #666;
+}
+
+.subscription-management-page .summary-info strong {
+  font-size: 18px;
+  color: #1976d2;
+}
+
+/* 테이블 컨테이너 */
+.subscription-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.subscription-management-page .table-header {
+  padding: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.subscription-management-page .table-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.subscription-management-page .filter-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.subscription-management-page .filter-section label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.subscription-management-page .date-tilde {
+  color: #999;
+}
+
+.sub-user-search-input,
+.sub-date-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.sub-user-search-input {
+  min-width: 150px;
+}
+
+.sub-user-search-input:focus,
+.sub-date-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.sub-search-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1976d2;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sub-search-btn:hover {
+  background: #1565c0;
+}
+
+.sub-reset-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub-reset-btn:hover {
+  border-color: #1976d2;
+  color: #1976d2;
+}
+
+.subscription-management-page .items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subscription-management-page .items-per-page label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.subscription-management-page .items-per-page select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.subscription-management-page .items-per-page select:hover {
+  border-color: #1976d2;
+}
+
+.subscription-management-page .table-wrapper {
+  overflow-x: auto;
+}
+
+/* 구독결제 테이블 */
+.subscription-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.subscription-table thead {
+  background: #f5f5f5;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.subscription-table th {
+  padding: 12px 10px;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* 컬럼 너비 */
+.subscription-table th:nth-child(1) { width: 50px; }   /* 순번 */
+.subscription-table th:nth-child(2) { width: 180px; }  /* 사용자 */
+.subscription-table th:nth-child(3) { width: 100px; }  /* 플랜 */
+.subscription-table th:nth-child(4) { width: 120px; }  /* 결제금액 */
+.subscription-table th:nth-child(5) { width: 100px; }  /* 결제상태 */
+.subscription-table th:nth-child(6) { width: 140px; }  /* 결제일자 */
+.subscription-table th:nth-child(7) { width: 110px; }  /* 다음결제일 */
+.subscription-table th:nth-child(8) { width: 110px; }  /* 이용만료일 */
+.subscription-table th:nth-child(9) { width: 220px; }  /* 주문번호 */
+.subscription-table th:nth-child(10) { width: 90px; }  /* 환불 */
+
+.subscription-table td {
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  font-size: 12px;
+  color: #555;
+}
+
+.subscription-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.subscription-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.subscription-management-page .no-data {
+  padding: 40px !important;
+  text-align: center !important;
+  color: #999;
+  font-size: 14px !important;
+}
+
+/* 사용자 셀 */
+.subscription-table .user-cell {
+  font-weight: 600;
+  color: #333;
+}
+
+.subscription-table .user-id-sub {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  font-weight: 400;
+}
+
+/* 금액 셀 */
+.subscription-table .amount-cell {
+  font-weight: 600;
+  color: #333;
+  text-align: right !important;
+  padding-right: 18px !important;
+}
+
+/* 주문번호 셀 */
+.subscription-table .order-id-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #888;
+}
+
+/* 결제상태 뱃지 */
+.sub-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sub-status-badge.paid {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #81c784;
+}
+
+.sub-status-badge.failed {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.sub-status-badge.canceled {
+  background: #f5f5f5;
+  color: #616161;
+  border: 1px solid #e0e0e0;
+}
+
+.sub-status-badge.partial {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffb74d;
+}
+
+.sub-status-badge.unknown {
+  background: #f5f5f5;
+  color: #616161;
+  border: 1px solid #e0e0e0;
+}
+
+/* 주문번호 셀 내 환불 안내 */
+.subscription-table .refunded-info {
+  display: block;
+  font-size: 11px;
+  color: #e65100;
+  font-weight: 600;
+}
+
+/* 환불 버튼 */
+.sub-refund-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+  white-space: nowrap;
+}
+
+.sub-refund-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+}
+
+.sub-refund-btn.completed {
+  background: linear-gradient(135deg, #bdbdbd 0%, #9e9e9e 100%);
+  cursor: default;
+  box-shadow: 0 2px 4px rgba(158, 158, 158, 0.3);
+}
+
+.sub-refund-btn.completed:hover {
+  transform: none;
+  box-shadow: 0 2px 4px rgba(158, 158, 158, 0.3);
+}
+
+/* 환불 모달 */
+.refund-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.refund-modal {
+  background: white;
+  border-radius: 10px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.refund-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eee;
+}
+
+.refund-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.refund-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.refund-modal-close:hover {
+  color: #333;
+}
+
+.refund-modal-body {
+  padding: 20px 22px;
+}
+
+.refund-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #555;
+  padding: 6px 0;
+}
+
+.refund-info-label {
+  font-weight: 600;
+  color: #888;
+}
+
+.refund-order-id {
+  font-size: 12px;
+  color: #888;
+}
+
+.refund-available {
+  font-weight: 700;
+  color: #1976d2;
+}
+
+.refund-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.refund-field label {
+  width: 90px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.refund-field input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+}
+
+.refund-field input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.refund-full-btn {
+  padding: 8px 12px;
+  border: 1px solid #1976d2;
+  background: white;
+  color: #1976d2;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refund-full-btn:hover {
+  background: #1976d2;
+  color: white;
+}
+
+.refund-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid #eee;
+}
+
+.refund-cancel-btn {
+  padding: 9px 18px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #666;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refund-cancel-btn:hover:not(:disabled) {
+  border-color: #999;
+}
+
+.refund-submit-btn {
+  padding: 9px 18px;
+  border: none;
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refund-submit-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+}
+
+.refund-submit-btn:disabled,
+.refund-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 페이징 */
+.subscription-management-page .pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.subscription-management-page .page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subscription-management-page .page-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #1976d2;
+  color: #1976d2;
+}
+
+.subscription-management-page .page-btn.active {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+  font-weight: 600;
+}
+
+.subscription-management-page .page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.subscription-management-page .page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .subscription-management-page {
+    padding: 10px;
+  }
+
+  .subscription-management-page-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .subscription-management-page .page-title {
+    font-size: 20px;
+  }
+
+  .subscription-management-page .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -378,6 +378,38 @@
   box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
 }
 
+/* 구독 버튼 */
+.user-table .subscription-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+/* 구독중 (클릭 시 구독취소) */
+.user-table .subscription-btn.subscribed {
+  background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(67, 160, 71, 0.3);
+}
+
+.user-table .subscription-btn.subscribed:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(67, 160, 71, 0.4);
+}
+
+/* 미구독 (무반응) */
+.user-table .subscription-btn.unsubscribed {
+  background: #eceff1;
+  color: #90a4ae;
+  cursor: default;
+  border: 1px solid #cfd8dc;
+}
+
 /* 클릭 가능한 사용자명 */
 .clickable-username {
   color: #1976d2;

@@ -64,8 +64,15 @@ router.get('/', async (req, res) => {
         margin_rate, user_phone, user_email, input_date, server_id,
         last_proc_date, proc_ord, batch_date, last_delete_date, use_yn,
         reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
-        cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, ${dispatchSelect}, ${rturnSelect}
+        cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, ${dispatchSelect}, ${rturnSelect},
+        s.sub_status
       FROM tb_user
+      OUTER APPLY (
+        SELECT TOP 1 status AS sub_status
+        FROM tb_subscription sub
+        WHERE sub.user_id = tb_user.user_id
+        ORDER BY sub.seq DESC
+      ) s
       WHERE 1=1
     `;
     

@@ -21,6 +21,7 @@ import UploadProductStatsPage from './components/UploadProductStatsPage'
 import DailySalesStatsPage from './components/DailySalesStatsPage'
 import OrderSalesStatsPage from './components/OrderSalesStatsPage'
 import SubscriptionPlanPage from './components/SubscriptionPlanPage'
+import SubscriptionManagementPage from './components/SubscriptionManagementPage'
 import ServerManagementPage from './components/ServerManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
 import BatchLogManagementPage from './components/BatchLogManagementPage'
@@ -158,6 +159,7 @@ function App() {
               {activeMenu === 'notices' && <NoticePage />}
               {activeMenu === 'standard-info' && <StandardInfoPage />}
               {activeMenu === 'user-management' && <UserManagementPage onNavigate={setActiveMenu} />}
+              {activeMenu === 'subscription-management' && <SubscriptionManagementPage />}
               {activeMenu === 'notice-management' && <NoticeManagementPage />}
               {activeMenu === 'deleted-products' && <DeleteProductManagementPage />}
               {activeMenu === 'detail-page-management' && <DetailPageManagement />}

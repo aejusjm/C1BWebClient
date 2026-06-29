@@ -10,6 +10,7 @@ const MARKET_API_URL = `${API_BASE}/api/market`
 const SMARTSTORE_API_URL = `${API_BASE}/api/smartstore-api`
 const COUPANG_API_URL = `${API_BASE}/api/coupang-api`
 const USER_DETAIL_IMAGE_API_URL = `${API_BASE}/api/user-detail-images`
+const SUBSCRIPTION_API_URL = `${API_BASE}/api/subscription`
 
 interface StoreInfo {
   biz_idx: number
@@ -72,6 +73,7 @@ interface User {
   ga_buy: string | null
   ga_buy_cnt: number
   marketCount?: number
+  sub_status?: string | null
 }
 
 interface UserManagementPageProps {
@@ -855,6 +857,39 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
     setShowEditModal(true)
   }
 
+  // 구독 여부 판단 (tb_subscription.status === 'ACTIVE' → 구독중)
+  const isSubscribed = (user: User) => user.sub_status === 'ACTIVE'
+
+  // 구독취소 처리 ('구독중'일 때만 동작, '미구독'은 무반응)
+  const handleSubscriptionCancel = async (user: User) => {
+    if (!isSubscribed(user)) return
+
+    const confirmed = await showConfirm(`${user.user_name}(${user.user_id})님의 구독을 취소하시겠습니까?`)
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`${SUBSCRIPTION_API_URL}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.user_id })
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        await showAlert('구독이 취소되었습니다.')
+        await loadUsers(searchParams)
+      } else {
+        await showAlert(result.message || '구독취소 중 오류가 발생했습니다.')
+      }
+    } catch (error) {
+      console.error('구독취소 오류:', error)
+      await showAlert('구독취소 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // 해당 사용자로 로그인
   const handleLoginAs = async (user: User) => {
     const confirmed = await showConfirm(`${user.user_name}(${user.user_id}) 계정으로 로그인하시겠습니까?`)
@@ -1191,9 +1226,6 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                 >
                   남은일자{getSortIcon('days_remaining')}
                 </th>
-                <th className="sortable" onClick={() => handleSort('margin_rate')}>
-                  마진율(%){getSortIcon('margin_rate')}
-                </th>
                 <th className="sortable" onClick={() => handleSort('server_id')}>
                   서버ID{getSortIcon('server_id')}
                 </th>
@@ -1216,6 +1248,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                   마켓연동{getSortIcon('marketCount')}
                 </th>
                 <th>상세이미지</th>
+                <th>구독</th>
                 <th>수정</th>
               </tr>
             </thead>
@@ -1262,7 +1295,6 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                     <td className={`td-days-remaining${daysRemainClass}`}>
                       {formatDaysRemaining(user.end_date)}
                     </td>
-                    <td>{user.margin_rate}%</td>
                     <td>{user.server_id}</td>
                     <td>{user.proc_ord}</td>
                     <td>
@@ -1301,6 +1333,24 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                       >
                         상세이미지
                       </button>
+                    </td>
+                    <td>
+                      {isSubscribed(user) ? (
+                        <button
+                          className="subscription-btn subscribed"
+                          onClick={() => handleSubscriptionCancel(user)}
+                          title="클릭 시 구독취소"
+                        >
+                          구독중
+                        </button>
+                      ) : (
+                        <button
+                          className="subscription-btn unsubscribed"
+                          type="button"
+                        >
+                          미구독
+                        </button>
+                      )}
                     </td>
                     <td>
                       <button 
