@@ -188,16 +188,18 @@
 }
 
 /* 컬럼 너비 */
-.subscription-table th:nth-child(1) { width: 50px; }   /* 순번 */
-.subscription-table th:nth-child(2) { width: 180px; }  /* 사용자 */
-.subscription-table th:nth-child(3) { width: 100px; }  /* 플랜 */
-.subscription-table th:nth-child(4) { width: 120px; }  /* 결제금액 */
-.subscription-table th:nth-child(5) { width: 100px; }  /* 결제상태 */
-.subscription-table th:nth-child(6) { width: 140px; }  /* 결제일자 */
-.subscription-table th:nth-child(7) { width: 110px; }  /* 다음결제일 */
-.subscription-table th:nth-child(8) { width: 110px; }  /* 이용만료일 */
-.subscription-table th:nth-child(9) { width: 220px; }  /* 주문번호 */
-.subscription-table th:nth-child(10) { width: 90px; }  /* 환불 */
+.subscription-table th:nth-child(1) { width: 45px; }   /* 순번 */
+.subscription-table th:nth-child(2) { width: 160px; }  /* 사용자 */
+.subscription-table th:nth-child(3) { width: 85px; }   /* 플랜 */
+.subscription-table th:nth-child(4) { width: 110px; }  /* 결제금액 */
+.subscription-table th:nth-child(5) { width: 110px; }  /* 환불금액 */
+.subscription-table th:nth-child(6) { width: 110px; }  /* 미환불금액 */
+.subscription-table th:nth-child(7) { width: 90px; }   /* 결제상태 */
+.subscription-table th:nth-child(8) { width: 140px; }  /* 결제일자 */
+.subscription-table th:nth-child(9) { width: 105px; }  /* 다음결제일 */
+.subscription-table th:nth-child(10) { width: 105px; } /* 이용만료일 */
+.subscription-table th:nth-child(11) { width: 200px; } /* 주문번호 */
+.subscription-table th:nth-child(12) { width: 85px; }  /* 환불 */
 
 .subscription-table td {
   padding: 12px 10px;
@@ -292,11 +294,9 @@
   border: 1px solid #e0e0e0;
 }
 
-/* 주문번호 셀 내 환불 안내 */
-.subscription-table .refunded-info {
-  display: block;
-  font-size: 11px;
-  color: #e65100;
+/* 환불금액 셀 */
+.subscription-table .refund-amount-cell {
+  color: #c62828;
   font-weight: 600;
 }
 

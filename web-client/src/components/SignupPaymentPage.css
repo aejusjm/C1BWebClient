@@ -1,0 +1,283 @@
+/* C1B 가입 결제 페이지 */
+.signup-payment-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.signup-payment-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+/* 헤더 */
+.signup-payment-header {
+  padding: 36px 32px 24px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.signup-logo-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.signup-logo-image {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.signup-logo-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signup-title-main {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1976d2;
+  letter-spacing: 1px;
+}
+
+.signup-title-divider {
+  color: #ccc;
+  font-weight: 300;
+}
+
+.signup-title-sub {
+  font-size: 14px;
+  color: #888;
+  font-weight: 500;
+}
+
+.signup-subtitle {
+  margin: 16px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* 본문 */
+.signup-payment-body {
+  padding: 28px 32px 8px;
+}
+
+/* 금액 박스 */
+.signup-amount-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #f5f9ff;
+  border: 1px solid #d6e6ff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.signup-amount-label {
+  font-size: 13px;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.signup-amount-value {
+  font-size: 30px;
+  font-weight: 800;
+  color: #0d47a1;
+}
+
+.signup-amount-vat {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 입력 필드 */
+.signup-field {
+  margin-bottom: 18px;
+}
+
+.signup-field label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.signup-field input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #333;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+
+.signup-field input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
+}
+
+/* 동의 */
+.signup-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+  margin: 4px 0 18px;
+  cursor: pointer;
+}
+
+.signup-agree input {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+/* 에러 메시지 */
+.signup-error-msg {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* 결제 버튼 */
+.signup-pay-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.35);
+}
+
+.signup-pay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.45);
+}
+
+.signup-pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 결과 화면 */
+.signup-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 32px 24px;
+}
+
+.signup-result-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 18px;
+}
+
+.signup-result-icon.success {
+  background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+}
+
+.signup-result-icon.fail {
+  background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+}
+
+.signup-result-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+}
+
+.signup-result-text {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.signup-retry-btn {
+  margin-top: 22px;
+  padding: 12px 28px;
+  border: 1px solid #1976d2;
+  background: #fff;
+  color: #1976d2;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.signup-retry-btn:hover {
+  background: #1976d2;
+  color: #fff;
+}
+
+/* 스피너 */
+.signup-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e3f2fd;
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: signup-spin 0.9s linear infinite;
+  margin-bottom: 18px;
+}
+
+@keyframes signup-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 푸터 */
+.signup-payment-footer {
+  padding: 18px 32px 24px;
+  text-align: center;
+}
+
+.signup-payment-footer p {
+  margin: 0;
+  font-size: 12px;
+  color: #aaa;
+}
+
+@media (max-width: 480px) {
+  .signup-payment-header { padding: 28px 22px 20px; }
+  .signup-payment-body { padding: 22px 22px 4px; }
+  .signup-amount-value { font-size: 26px; }
+}

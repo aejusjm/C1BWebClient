@@ -81,10 +81,33 @@ async function cancelPayment(paymentKey, params, idempotencyKey) {
   return data;
 }
 
+// 일반 결제 승인 (결제창 방식)
+// params: { paymentKey, orderId, amount }
+async function confirmPayment({ paymentKey, orderId, amount }) {
+  const res = await fetch(`${TOSS_API_BASE}/v1/payments/confirm`, {
+    method: 'POST',
+    headers: {
+      Authorization: getAuthHeader(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ paymentKey, orderId, amount })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const message = data.message || '결제 승인에 실패했습니다.';
+    const err = new Error(message);
+    err.tossResponse = data;
+    throw err;
+  }
+  return data;
+}
+
 module.exports = {
   TOSS_API_BASE,
   getAuthHeader,
   issueBillingKey,
   requestBilling,
-  cancelPayment
+  cancelPayment,
+  confirmPayment
 };

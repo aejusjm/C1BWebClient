@@ -225,10 +225,10 @@ function SubscriptionManagementPage() {
     return `${amount.toLocaleString()}원`
   }
 
-  // 집계: 총 결제금액(완료건만)
+  // 집계: 총 결제완료 금액 (실패 제외, 환불액 차감 = 실수령액)
   const totalPaidAmount = payments
-    .filter((p) => p.status === 'DONE')
-    .reduce((sum, p) => sum + (p.amount || 0), 0)
+    .filter((p) => p.status !== 'FAILED')
+    .reduce((sum, p) => sum + ((p.amount || 0) - (p.refund_amount || 0)), 0)
 
   // 페이징 계산
   const indexOfLastItem = currentPage * itemsPerPage
@@ -325,6 +325,8 @@ function SubscriptionManagementPage() {
                 <th>사용자</th>
                 <th>플랜</th>
                 <th>결제금액</th>
+                <th>환불금액</th>
+                <th>미환불금액</th>
                 <th>결제상태</th>
                 <th>결제일자</th>
                 <th>다음결제일</th>
@@ -336,7 +338,7 @@ function SubscriptionManagementPage() {
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="no-data">
+                  <td colSpan={12} className="no-data">
                     {loading ? '로딩 중...' : '구독결제 내역이 없습니다.'}
                   </td>
                 </tr>
@@ -352,6 +354,12 @@ function SubscriptionManagementPage() {
                       </td>
                       <td>{getPlanLabel(payment.plan_type)}</td>
                       <td className="amount-cell">{formatAmount(payment.amount)}</td>
+                      <td className="amount-cell refund-amount-cell">
+                        {payment.refund_amount > 0 ? `-${payment.refund_amount.toLocaleString()}원` : '-'}
+                      </td>
+                      <td className="amount-cell">
+                        {formatAmount((payment.amount || 0) - (payment.refund_amount || 0))}
+                      </td>
                       <td>
                         <span className={`sub-status-badge ${statusBadge.className}`}>
                           {statusBadge.label}
@@ -362,11 +370,6 @@ function SubscriptionManagementPage() {
                       <td>{formatDate(payment.end_date)}</td>
                       <td className="order-id-cell" title={payment.order_id}>
                         {payment.order_id}
-                        {payment.refund_amount > 0 && (
-                          <span className="refunded-info">
-                            환불 {payment.refund_amount.toLocaleString()}원
-                          </span>
-                        )}
                       </td>
                       <td>
                         {canRefund(payment) ? (

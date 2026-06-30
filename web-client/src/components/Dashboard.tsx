@@ -16,9 +16,6 @@ import ProductStats from './ProductStats'
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/orders`
 
-/** 대시보드 하단 회사/푸터 정보 표시 여부 */
-const SHOW_DASHBOARD_FOOTER = false
-
 interface DashboardProps {
   onNavigate?: (menu: string) => void
 }
@@ -500,18 +497,28 @@ function Dashboard({ onNavigate }: DashboardProps) {
         <ProductStats />
       </div>
 
-      {/* 푸터 정보 (필요 시 SHOW_DASHBOARD_FOOTER 로 다시 표시) */}
-      {SHOW_DASHBOARD_FOOTER && (
+      {/* 푸터 정보 - user_id 'payuser' 또는 사용자종류 '관리자'에게만 표시 */}
+      {(userInfo.userId === 'payuser' || userInfo.userType === '관리자') && (
         <footer className="dashboard-footer">
           <div className="company-info">
-            <strong>(주)SHS corp.</strong>
-            <p>회사명: 에스에이치에스코퍼레이션 | 대표이사명 |</p>
-            <p>회사주소: 경기도 화성시 향남읍 발안공단로 27 공장동2층</p>
-            <p>고객센터: 전화번호 - 031-xxx-xxxx | 팩스번호 - 031-xxx-xxxx | 이메일 - xxx@xxx.com | 사업자번호 - xxx-xx-xxxxx</p>
-          </div>
-          <div className="footer-notice">
-            <p>서비스 이용문의 | 개인정보 처리방침</p>
-            <p>고객센터 연락시간 - 09:30 ~ 17:00 (주말 및 공휴일 휴무)</p>
+            <p className="footer-company-name">
+              <strong>(주)에스에이치에스코퍼레이션</strong>
+            </p>
+            <p><span className="footer-bullet">•</span><span className="footer-label">대표자명</span> 서하성</p>
+            <p><span className="footer-bullet">•</span><span className="footer-label">사업장 주소</span> 18469 경기도 화성시 동탄첨단산업1로 27 (영천동)</p>
+            <p><span className="footer-bullet">•</span><span className="footer-label">대표 전화</span> 1555-5696</p>
+            <p><span className="footer-bullet">•</span><span className="footer-label">사업자 등록번호</span> 519-81-04227</p>
+            <p>
+              <span className="footer-bullet">•</span><span className="footer-label">통신판매업 신고번호</span> 제 2025-화성동탄-5248 호
+              <a
+                className="footer-biz-link"
+                href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5198104227"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                [사업자정보확인]
+              </a>
+            </p>
           </div>
         </footer>
       )}

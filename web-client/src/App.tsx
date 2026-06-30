@@ -22,6 +22,7 @@ import DailySalesStatsPage from './components/DailySalesStatsPage'
 import OrderSalesStatsPage from './components/OrderSalesStatsPage'
 import SubscriptionPlanPage from './components/SubscriptionPlanPage'
 import SubscriptionManagementPage from './components/SubscriptionManagementPage'
+import SignupPaymentPage from './components/SignupPaymentPage'
 import ServerManagementPage from './components/ServerManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
 import BatchLogManagementPage from './components/BatchLogManagementPage'
@@ -113,6 +114,16 @@ function App() {
     })
     localStorage.removeItem('userInfo')
     setActiveMenu('dashboard')
+  }
+
+  // 가입 결제 페이지(/signup) - 로그인 불필요, 직접 접근 가능
+  const currentPath = location.pathname.replace(/\/$/, '').toLowerCase()
+  if (currentPath === '/signup') {
+    return (
+      <AlertProvider>
+        <SignupPaymentPage />
+      </AlertProvider>
+    )
   }
 
   // 로그인하지 않은 경우 로그인 페이지 표시
