@@ -1,5 +1,5 @@
 .subscription-plan-page {
-  max-width: 980px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
   min-height: calc(100vh - 48px);
@@ -45,7 +45,7 @@
 
 .plan-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -66,7 +66,23 @@
   box-shadow: 0 14px 30px rgba(5, 150, 105, 0.12);
 }
 
-@media (max-width: 980px) {
+.plan-card.extend {
+  border-color: #fde68a;
+  box-shadow: 0 14px 30px rgba(217, 119, 6, 0.12);
+}
+
+.plan-card.extend .plan-badge {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+@media (max-width: 1200px) {
+  .plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
   .plan-grid {
     grid-template-columns: 1fr;
   }
@@ -152,6 +168,18 @@
 .toss-pay-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.4);
+}
+
+.toss-pay-btn.extend-pay-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 55%, #b45309 100%);
+}
+
+.toss-pay-btn.extend-pay-btn:hover {
+  box-shadow: 0 10px 20px rgba(217, 119, 6, 0.4);
+}
+
+.plan-card.extend .plan-actions {
+  border-top-color: rgba(217, 119, 6, 0.22);
 }
 
 .payment-note {

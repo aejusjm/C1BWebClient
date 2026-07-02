@@ -28,6 +28,7 @@ interface SubscriptionPayment {
 /** 플랜 코드 → 화면 라벨 */
 function getPlanLabel(plan: string | null): string {
   if (plan === 'BASIC') return '기본 플랜'
+  if (plan === 'EXTEND') return '2주 연장'
   if (plan === 'EXTRA') return '추가 플랜'
   return plan || '-'
 }

@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getConnection, sql } = require('../config/database');
-const { issueBillingKey, requestBilling } = require('../services/tossPayments');
+const { issueBillingKey, requestBilling, confirmPayment } = require('../services/tossPayments');
 
 // VAT 세율 (10%)
 const VAT_RATE = 0.1;
@@ -11,7 +11,8 @@ const VAT_RATE = 0.1;
 // 플랜 메타 (주문명 등). 실제 청구 금액은 기준정보(구독료)에서 동적으로 산정.
 const PLAN_META = {
   BASIC: { orderName: 'C1B 기본 플랜' },
-  EXTRA: { orderName: 'C1B 추가 플랜', baseAmount: 50000 }
+  EXTRA: { orderName: 'C1B 추가 플랜', baseAmount: 50000 },
+  EXTEND: { orderName: 'C1B 2주 연장', amount: 550000 }
 };
 
 function getPlanConfig(plan) {
@@ -40,6 +41,9 @@ async function resolvePlanAmount(pool, plan) {
   if (plan === 'EXTRA') {
     return applyVat(PLAN_META.EXTRA.baseAmount);
   }
+  if (plan === 'EXTEND') {
+    return PLAN_META.EXTEND.amount;
+  }
   return 0;
 }
 
@@ -49,10 +53,153 @@ function generateOrderId(userId) {
   return `SUB_${userId}_${Date.now()}_${rand}`;
 }
 
+// 2주 연장(일회성 결제) 주문번호
+function generateExtendOrderId(userId) {
+  const rand = crypto.randomBytes(4).toString('hex');
+  return `EXT_${userId}_${Date.now()}_${rand}`;
+}
+
 // customerKey 생성 (추측 어려운 값)
 function generateCustomerKey(userId) {
   const rand = crypto.randomBytes(8).toString('hex');
   return `cus_${userId}_${rand}`;
+}
+
+// ACTIVE 구독 존재 여부 (최신 행이 PENDING이어도 ACTIVE가 있으면 구독중)
+async function hasActiveSubscription(pool, userId) {
+  const result = await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .query(`
+      SELECT TOP 1 1 AS ok
+      FROM tb_subscription
+      WHERE user_id = @user_id AND status = 'ACTIVE'
+    `);
+  return result.recordset.length > 0;
+}
+
+// 2주 연장 주문번호가 해당 유저 소유인지 검증
+function isValidExtendOrderId(orderId, userId) {
+  if (!orderId || !userId) return false;
+  return String(orderId).startsWith(`EXT_${userId}_`);
+}
+
+// 2주 연장(일회성) 결제 성공: 결제 이력 저장 + tb_user.end_date 2주 연장
+async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .input('order_id', sql.NVarChar, orderId)
+    .input('payment_key', sql.NVarChar, payment.paymentKey || null)
+    .input('plan_type', sql.NVarChar, 'EXTEND')
+    .input('amount', sql.Int, amount)
+    .input('status', sql.NVarChar, payment.status || 'DONE')
+    .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
+    .input('raw_response', sql.NVarChar, JSON.stringify(payment))
+    .query(`
+      INSERT INTO tb_subscription_payment
+        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, raw_response)
+      VALUES
+        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, @paid_at, @raw_response)
+    `);
+
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .query(`
+      UPDATE tb_user
+      SET end_date = DATEADD(WEEK, 2,
+        CASE
+          WHEN end_date IS NULL OR end_date < CONVERT(DATE, GETDATE())
+          THEN CONVERT(DATE, GETDATE())
+          ELSE end_date
+        END)
+      WHERE user_id = @user_id
+    `);
+}
+
+// 2주 연장 결제 실패 이력 저장 (완료 건이 없을 때만)
+async function saveExtendPaymentFailure(pool, { userId, orderId, amount, error }) {
+  const existing = await pool.request()
+    .input('order_id', sql.NVarChar, orderId)
+    .query(`
+      SELECT TOP 1 status
+      FROM tb_subscription_payment
+      WHERE order_id = @order_id
+    `);
+
+  if (existing.recordset.length > 0) return;
+
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .input('order_id', sql.NVarChar, orderId)
+    .input('plan_type', sql.NVarChar, 'EXTEND')
+    .input('amount', sql.Int, amount)
+    .input('status', sql.NVarChar, 'FAILED')
+    .input('raw_response', sql.NVarChar, JSON.stringify(error.tossResponse || { message: error.message }))
+    .query(`
+      INSERT INTO tb_subscription_payment (user_id, order_id, plan_type, amount, status, raw_response)
+      VALUES (@user_id, @order_id, @plan_type, @amount, @status, @raw_response)
+    `);
+}
+
+// 구독/빌링키 레코드 저장 (결제 성공 시)
+async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey, planType, amount }) {
+  const existing = await pool.request()
+    .input('customer_key', sql.NVarChar, customerKey)
+    .query(`SELECT TOP 1 seq FROM tb_subscription WHERE customer_key = @customer_key`);
+
+  if (existing.recordset.length > 0) {
+    await pool.request()
+      .input('customer_key', sql.NVarChar, customerKey)
+      .input('billing_key', sql.NVarChar, billingKey)
+      .input('plan_type', sql.NVarChar, planType)
+      .input('amount', sql.Int, amount)
+      .query(`
+        UPDATE tb_subscription
+        SET billing_key = @billing_key,
+            plan_type = @plan_type,
+            amount = @amount,
+            status = 'ACTIVE',
+            next_pay_date = DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())),
+            updated_at = GETDATE()
+        WHERE customer_key = @customer_key
+      `);
+    return;
+  }
+
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .input('customer_key', sql.NVarChar, customerKey)
+    .input('billing_key', sql.NVarChar, billingKey)
+    .input('plan_type', sql.NVarChar, planType)
+    .input('amount', sql.Int, amount)
+    .query(`
+      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date)
+      VALUES (@user_id, @customer_key, @billing_key, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())))
+    `);
+}
+
+// 구독 결제 실패 이력 저장 (완료 건이 없을 때만)
+async function saveSubscriptionPaymentFailure(pool, { userId, orderId, planType, amount, error }) {
+  const existing = await pool.request()
+    .input('order_id', sql.NVarChar, orderId)
+    .query(`
+      SELECT TOP 1 status
+      FROM tb_subscription_payment
+      WHERE order_id = @order_id
+    `);
+
+  if (existing.recordset.length > 0) return;
+
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .input('order_id', sql.NVarChar, orderId)
+    .input('plan_type', sql.NVarChar, planType)
+    .input('amount', sql.Int, amount)
+    .input('status', sql.NVarChar, 'FAILED')
+    .input('raw_response', sql.NVarChar, JSON.stringify(error.tossResponse || { message: error.message }))
+    .query(`
+      INSERT INTO tb_subscription_payment (user_id, order_id, plan_type, amount, status, raw_response)
+      VALUES (@user_id, @order_id, @plan_type, @amount, @status, @raw_response)
+    `);
 }
 
 // 결제 성공 시 결제 이력 저장 + tb_user.end_date 1개월 연장 + 구독 상태 업데이트
@@ -88,7 +235,7 @@ async function applySuccessfulPayment(pool, { userId, planType, amount, orderId,
       WHERE user_id = @user_id
     `);
 
-  // 구독 상태/다음 결제일 업데이트
+  // 구독 상태/다음 결제일 업데이트 (기존 레코드 보강)
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
     .query(`
@@ -100,7 +247,7 @@ async function applySuccessfulPayment(pool, { userId, planType, amount, orderId,
     `);
 }
 
-// 1) 결제 준비: customerKey 발급 + 구독 레코드 생성/갱신 (status=PENDING)
+// 1) 결제 준비: customerKey 발급 (DB 저장 없음)
 router.post('/prepare', async (req, res) => {
   try {
     const { userId, plan } = req.body;
@@ -110,7 +257,15 @@ router.post('/prepare', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수 정보(userId, plan)가 올바르지 않습니다.' });
     }
 
+    if (plan === 'EXTEND') {
+      return res.status(400).json({ success: false, message: '2주 연장은 일회성 결제로 진행해주세요.' });
+    }
+
     const pool = await getConnection();
+
+    if (plan === 'BASIC' && await hasActiveSubscription(pool, userId)) {
+      return res.status(400).json({ success: false, message: '이미 구독중입니다.' });
+    }
 
     // 청구 금액(VAT 포함) 산정 - 기준정보관리의 구독료 기준
     const amount = await resolvePlanAmount(pool, plan);
@@ -118,37 +273,14 @@ router.post('/prepare', async (req, res) => {
       return res.status(400).json({ success: false, message: '구독료가 설정되어 있지 않습니다. 기준정보관리에서 구독료를 입력해주세요.' });
     }
 
-    // 기존 구독 레코드 조회 (customerKey 재사용)
+    // 기존 customerKey 재사용(조회만), 없으면 신규 발급
     const existing = await pool.request()
       .input('user_id', sql.NVarChar, userId)
       .query(`SELECT TOP 1 customer_key FROM tb_subscription WHERE user_id = @user_id ORDER BY seq DESC`);
 
-    let customerKey;
-    if (existing.recordset.length > 0 && existing.recordset[0].customer_key) {
-      customerKey = existing.recordset[0].customer_key;
-      // 플랜/금액/상태 갱신
-      await pool.request()
-        .input('user_id', sql.NVarChar, userId)
-        .input('customer_key', sql.NVarChar, customerKey)
-        .input('plan_type', sql.NVarChar, plan)
-        .input('amount', sql.Int, amount)
-        .query(`
-          UPDATE tb_subscription
-          SET plan_type = @plan_type, amount = @amount, status = 'PENDING', updated_at = GETDATE()
-          WHERE customer_key = @customer_key
-        `);
-    } else {
-      customerKey = generateCustomerKey(userId);
-      await pool.request()
-        .input('user_id', sql.NVarChar, userId)
-        .input('customer_key', sql.NVarChar, customerKey)
-        .input('plan_type', sql.NVarChar, plan)
-        .input('amount', sql.Int, amount)
-        .query(`
-          INSERT INTO tb_subscription (user_id, customer_key, plan_type, amount, status)
-          VALUES (@user_id, @customer_key, @plan_type, @amount, 'PENDING')
-        `);
-    }
+    const customerKey = (existing.recordset.length > 0 && existing.recordset[0].customer_key)
+      ? existing.recordset[0].customer_key
+      : generateCustomerKey(userId);
 
     res.json({ success: true, data: { customerKey, amount } });
   } catch (error) {
@@ -167,7 +299,15 @@ router.post('/issue-billing-key', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수 정보가 누락되었습니다.' });
     }
 
+    if (plan === 'EXTEND') {
+      return res.status(400).json({ success: false, message: '2주 연장은 일회성 결제로 진행해주세요.' });
+    }
+
     const pool = await getConnection();
+
+    if (plan === 'BASIC' && await hasActiveSubscription(pool, userId)) {
+      return res.status(400).json({ success: false, message: '이미 구독중입니다.' });
+    }
 
     // 청구 금액(VAT 포함) 재산정 - 기준정보관리의 구독료 기준 (서버에서 강제)
     const amount = await resolvePlanAmount(pool, plan);
@@ -175,42 +315,145 @@ router.post('/issue-billing-key', async (req, res) => {
       return res.status(400).json({ success: false, message: '구독료가 설정되어 있지 않습니다. 기준정보관리에서 구독료를 입력해주세요.' });
     }
 
-    // 빌링키 발급
-    const billing = await issueBillingKey(authKey, customerKey);
-    const billingKey = billing.billingKey;
+    const orderId = generateOrderId(userId);
 
-    // 빌링키 저장
-    await pool.request()
-      .input('customer_key', sql.NVarChar, customerKey)
-      .input('billing_key', sql.NVarChar, billingKey)
+    try {
+      const billing = await issueBillingKey(authKey, customerKey);
+      const billingKey = billing.billingKey;
+
+      const payment = await requestBilling(billingKey, {
+        customerKey,
+        amount,
+        orderId,
+        orderName: planConfig.orderName
+      });
+
+      await upsertSubscriptionRecord(pool, {
+        userId,
+        customerKey,
+        billingKey,
+        planType: plan,
+        amount
+      });
+
+      await applySuccessfulPayment(pool, {
+        userId,
+        planType: plan,
+        amount,
+        orderId,
+        payment
+      });
+
+      res.json({ success: true, data: { orderId, status: payment.status } });
+    } catch (error) {
+      console.error('빌링키 발급/결제 오류:', error);
+
+      try {
+        await saveSubscriptionPaymentFailure(pool, {
+          userId,
+          orderId,
+          planType: plan,
+          amount,
+          error
+        });
+      } catch (e) {
+        console.error('구독 결제 실패 이력 저장 오류:', e);
+      }
+
+      res.status(500).json({ success: false, message: error.message || '구독 결제 처리 중 오류가 발생했습니다.' });
+    }
+  } catch (error) {
+    console.error('빌링키 발급/결제 처리 오류:', error);
+    res.status(500).json({ success: false, message: error.message || '구독 결제 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+// 2-1) 2주 연장 일회성 결제 준비
+router.post('/extend/prepare', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'userId가 필요합니다.' });
+    }
+
+    const amount = PLAN_META.EXTEND.amount;
+    const orderId = generateExtendOrderId(userId);
+    const orderName = PLAN_META.EXTEND.orderName;
+
+    res.json({
+      success: true,
+      data: { orderId, amount, orderName }
+    });
+  } catch (error) {
+    console.error('2주 연장 결제 준비 오류:', error);
+    res.status(500).json({ success: false, message: '결제 준비 중 오류가 발생했습니다.' });
+  }
+});
+
+// 2-2) 2주 연장 일회성 결제 승인
+router.post('/extend/confirm', async (req, res) => {
+  try {
+    const { paymentKey, orderId, amount, userId } = req.body;
+
+    if (!paymentKey || !orderId || !amount || !userId) {
+      return res.status(400).json({ success: false, message: '결제 정보가 누락되었습니다.' });
+    }
+
+    const pool = await getConnection();
+
+    if (!isValidExtendOrderId(orderId, userId)) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 주문입니다.' });
+    }
+
+    const existing = await pool.request()
+      .input('order_id', sql.NVarChar, orderId)
       .query(`
-        UPDATE tb_subscription
-        SET billing_key = @billing_key, updated_at = GETDATE()
-        WHERE customer_key = @customer_key
+        SELECT TOP 1 status
+        FROM tb_subscription_payment
+        WHERE order_id = @order_id
       `);
 
-    // 첫 결제 실행
-    const orderId = generateOrderId(userId);
-    const payment = await requestBilling(billingKey, {
-      customerKey,
-      amount,
-      orderId,
-      orderName: planConfig.orderName
-    });
+    if (existing.recordset.length > 0) {
+      if (existing.recordset[0].status === 'DONE') {
+        return res.json({ success: true, data: { orderId, status: 'DONE' } });
+      }
+      return res.status(400).json({ success: false, message: '이미 처리된 주문입니다.' });
+    }
 
-    // 결제 이력 + 만료일 연장 + 구독 활성화
-    await applySuccessfulPayment(pool, {
+    if (Number(amount) !== PLAN_META.EXTEND.amount) {
+      return res.status(400).json({ success: false, message: '결제 금액이 일치하지 않습니다.' });
+    }
+
+    const payment = await confirmPayment({ paymentKey, orderId, amount: PLAN_META.EXTEND.amount });
+
+    await applyExtendPayment(pool, {
       userId,
-      planType: plan,
-      amount,
+      amount: PLAN_META.EXTEND.amount,
       orderId,
       payment
     });
 
-    res.json({ success: true, data: { orderId, status: payment.status } });
+    res.json({ success: true, data: { orderId, status: payment.status || 'DONE' } });
   } catch (error) {
-    console.error('빌링키 발급/결제 오류:', error);
-    res.status(500).json({ success: false, message: error.message || '구독 결제 처리 중 오류가 발생했습니다.' });
+    console.error('2주 연장 결제 승인 오류:', error);
+
+    try {
+      const { orderId, amount, userId } = req.body || {};
+      if (orderId && userId && isValidExtendOrderId(orderId, userId)) {
+        const failPool = await getConnection();
+        await saveExtendPaymentFailure(failPool, {
+          userId,
+          orderId,
+          amount: Number(amount) || PLAN_META.EXTEND.amount,
+          error
+        });
+      }
+    } catch (e) {
+      console.error('2주 연장 결제 실패 이력 저장 오류:', e);
+    }
+
+    res.status(500).json({ success: false, message: error.message || '결제 승인 중 오류가 발생했습니다.' });
   }
 });
 
@@ -219,6 +462,9 @@ router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const pool = await getConnection();
+    const isActive = await hasActiveSubscription(pool, userId);
+
+    // ACTIVE 구독 우선, 없으면 최신 레코드 반환
     const result = await pool.request()
       .input('user_id', sql.NVarChar, userId)
       .query(`
@@ -227,10 +473,16 @@ router.get('/:userId', async (req, res) => {
                created_at, updated_at
         FROM tb_subscription
         WHERE user_id = @user_id
-        ORDER BY seq DESC
+        ORDER BY
+          CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END,
+          seq DESC
       `);
 
-    res.json({ success: true, data: result.recordset[0] || null });
+    res.json({
+      success: true,
+      isActive,
+      data: result.recordset[0] || null
+    });
   } catch (error) {
     console.error('구독 상태 조회 오류:', error);
     res.status(500).json({ success: false, message: '구독 상태 조회 중 오류가 발생했습니다.' });

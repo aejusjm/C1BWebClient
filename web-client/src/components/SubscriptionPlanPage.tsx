@@ -8,7 +8,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/subscription`
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || ''
 
-type PlanType = 'BASIC' | 'EXTRA'
+type PlanType = 'BASIC' | 'EXTRA' | 'EXTEND'
 
 function SubscriptionPlanPage() {
   const { showAlert } = useAlert()
@@ -24,6 +24,53 @@ function SubscriptionPlanPage() {
     // 쿼리스트링 정리 (재처리 방지)
     const clearQuery = () => {
       window.history.replaceState({}, '', window.location.pathname)
+    }
+
+    if (subscription === 'extend-fail') {
+      const message = params.get('message') || '결제가 취소되었거나 실패했습니다.'
+      clearQuery()
+      showAlert(`2주 연장 결제 실패: ${message}`)
+      return
+    }
+
+    if (subscription === 'extend-success') {
+      const paymentKey = params.get('paymentKey')
+      const orderId = params.get('orderId')
+      const amount = params.get('amount')
+      clearQuery()
+
+      if (!paymentKey || !orderId || !amount || !userInfo.userId) {
+        showAlert('결제 정보가 올바르지 않습니다. 다시 시도해주세요.')
+        return
+      }
+
+      ;(async () => {
+        try {
+          setProcessing(true)
+          const response = await fetch(`${API_URL}/extend/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentKey,
+              orderId,
+              amount: Number(amount),
+              userId: userInfo.userId
+            })
+          })
+          const result = await response.json()
+          if (result.success) {
+            await showAlert('2주 연장 결제가 완료되었습니다. 이용 기간이 2주 연장되었습니다.')
+          } else {
+            await showAlert(result.message || '결제 승인에 실패했습니다.')
+          }
+        } catch (error) {
+          console.error('2주 연장 결제 승인 오류:', error)
+          await showAlert('결제 승인 처리 중 오류가 발생했습니다.')
+        } finally {
+          setProcessing(false)
+        }
+      })()
+      return
     }
 
     if (subscription === 'fail') {
@@ -70,11 +117,87 @@ function SubscriptionPlanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleSubscribe = async (planType: PlanType) => {
+  const handleExtendPurchase = async () => {
     if (!userInfo.userId) {
       await showAlert('로그인 정보가 없습니다. 다시 로그인해주세요.')
       return
     }
+
+    if (!TOSS_CLIENT_KEY) {
+      await showAlert('결제 설정(클라이언트 키)이 없습니다. 관리자에게 문의하세요.')
+      return
+    }
+
+    try {
+      setProcessing(true)
+
+      const prepareRes = await fetch(`${API_URL}/extend/prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userInfo.userId })
+      })
+      const prepareResult = await prepareRes.json()
+      if (!prepareResult.success) {
+        await showAlert(prepareResult.message || '결제 준비에 실패했습니다.')
+        setProcessing(false)
+        return
+      }
+
+      const { orderId, amount, orderName } = prepareResult.data
+
+      const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
+      const origin = window.location.origin
+      await tossPayments.requestPayment('카드', {
+        amount,
+        orderId,
+        orderName,
+        customerName: userInfo.userName || userInfo.userId,
+        successUrl: `${origin}/?subscription=extend-success`,
+        failUrl: `${origin}/?subscription=extend-fail`
+      })
+    } catch (error) {
+      console.error('2주 연장 결제 요청 오류:', error)
+      setProcessing(false)
+    }
+  }
+
+  const handleSubscribe = async (planType: PlanType) => {
+    if (planType === 'EXTEND') {
+      await handleExtendPurchase()
+      return
+    }
+
+    if (planType === 'EXTRA') {
+      await showAlert('구독이 불가합니다')
+      return
+    }
+
+    if (!userInfo.userId) {
+      await showAlert('로그인 정보가 없습니다. 다시 로그인해주세요.')
+      return
+    }
+
+    // 기본 플랜: 이미 구독중인지 확인
+    try {
+      const statusRes = await fetch(`${API_URL}/${encodeURIComponent(userInfo.userId)}`)
+      const statusResult = await statusRes.json()
+      const isActive =
+        statusResult.isActive === true ||
+        String(statusResult.data?.status || '').trim().toUpperCase() === 'ACTIVE'
+      if (planType === 'BASIC' && statusResult.success && isActive) {
+        await showAlert('이미 구독중입니다.')
+        return
+      }
+      if (!statusRes.ok || !statusResult.success) {
+        await showAlert(statusResult.message || '구독 상태 확인에 실패했습니다.')
+        return
+      }
+    } catch (error) {
+      console.error('구독 상태 조회 오류:', error)
+      await showAlert('구독 상태 확인 중 오류가 발생했습니다.')
+      return
+    }
+
     if (!TOSS_CLIENT_KEY) {
       await showAlert('결제 설정(클라이언트 키)이 없습니다. 관리자에게 문의하세요.')
       return
@@ -125,7 +248,7 @@ function SubscriptionPlanPage() {
           <div className="plan-badge">기본 플렌</div>
           <div className="plan-price">
             <strong>월 990,000원</strong>
-            <span>(VAT 별도)</span>
+            <span>(VAT 포함)</span>
           </div>
           <div className="plan-divider" />
 
@@ -144,11 +267,33 @@ function SubscriptionPlanPage() {
           </div>
         </div>
 
+        <div className="plan-card extend">
+          <div className="plan-badge">2주 연장</div>
+          <div className="plan-price">
+            <strong>550,000원</strong>
+            <span>(VAT 포함)</span>
+          </div>
+          <div className="plan-divider" />
+
+          <ul className="plan-features">
+            <li>옵션 및 상세페이지 이미지 자동 번역</li>
+            <li>자동 상품갈이 : 매일 150~200개 삭제 후 업로드 자동</li>
+            <li>상세페이지 상/하단 이미지 무료 생성(변경 요청 가능)</li>
+            <li>결제 시 마다 2주씩 연장</li>
+          </ul>
+
+          <div className="plan-actions">
+            <button className="toss-pay-btn extend-pay-btn" onClick={() => handleSubscribe('EXTEND')} disabled={processing}>
+              {processing ? '처리 중...' : '구매하기'}
+            </button>
+          </div>
+        </div>
+
         <div className="plan-card secondary">
           <div className="plan-badge">추가 플랜</div>
           <div className="plan-price">
             <strong>월 50,000원</strong>
-            <span>(VAT 별도)</span>
+            <span>(VAT 포함)</span>
           </div>
           <div className="plan-divider" />
 

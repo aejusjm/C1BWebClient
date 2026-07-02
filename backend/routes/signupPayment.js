@@ -14,7 +14,53 @@ function generateOrderId() {
   return `JOIN_${Date.now()}_${rand}`;
 }
 
-// 1) 결제 준비: 가입자 정보 저장 + orderId 발급
+function isValidSignupOrderId(orderId) {
+  return /^JOIN_\d+_[a-f0-9]+$/.test(String(orderId || ''));
+}
+
+async function saveSignupPaymentSuccess(pool, { name, phone, orderId, payment }) {
+  await pool.request()
+    .input('joiner_name', sql.NVarChar, String(name).trim())
+    .input('joiner_phone', sql.NVarChar, String(phone).trim())
+    .input('order_id', sql.NVarChar, orderId)
+    .input('order_name', sql.NVarChar, ORDER_NAME)
+    .input('payment_key', sql.NVarChar, payment.paymentKey || null)
+    .input('amount', sql.Int, SIGNUP_AMOUNT)
+    .input('status', sql.NVarChar, payment.status || 'DONE')
+    .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
+    .input('raw_response', sql.NVarChar, JSON.stringify(payment))
+    .query(`
+      INSERT INTO tb_signup_payment
+        (joiner_name, joiner_phone, order_id, order_name, payment_key, amount, status, paid_at, raw_response)
+      VALUES
+        (@joiner_name, @joiner_phone, @order_id, @order_name, @payment_key, @amount, @status, @paid_at, @raw_response)
+    `);
+}
+
+async function saveSignupPaymentFailure(pool, { name, phone, orderId, error }) {
+  const existing = await pool.request()
+    .input('order_id', sql.NVarChar, orderId)
+    .query(`SELECT TOP 1 status FROM tb_signup_payment WHERE order_id = @order_id`);
+
+  if (existing.recordset.length > 0) return;
+
+  await pool.request()
+    .input('joiner_name', sql.NVarChar, String(name).trim())
+    .input('joiner_phone', sql.NVarChar, String(phone).trim())
+    .input('order_id', sql.NVarChar, orderId)
+    .input('order_name', sql.NVarChar, ORDER_NAME)
+    .input('amount', sql.Int, SIGNUP_AMOUNT)
+    .input('status', sql.NVarChar, 'FAILED')
+    .input('raw_response', sql.NVarChar, JSON.stringify(error.tossResponse || { message: error.message }))
+    .query(`
+      INSERT INTO tb_signup_payment
+        (joiner_name, joiner_phone, order_id, order_name, amount, status, raw_response)
+      VALUES
+        (@joiner_name, @joiner_phone, @order_id, @order_name, @amount, @status, @raw_response)
+    `);
+}
+
+// 1) 결제 준비: orderId 발급 (DB 저장 없음)
 router.post('/prepare', async (req, res) => {
   try {
     const { name, phone } = req.body;
@@ -23,23 +69,16 @@ router.post('/prepare', async (req, res) => {
       return res.status(400).json({ success: false, message: '가입자명과 연락처를 입력해주세요.' });
     }
 
-    const pool = await getConnection();
     const orderId = generateOrderId();
-
-    await pool.request()
-      .input('joiner_name', sql.NVarChar, String(name).trim())
-      .input('joiner_phone', sql.NVarChar, String(phone).trim())
-      .input('order_id', sql.NVarChar, orderId)
-      .input('order_name', sql.NVarChar, ORDER_NAME)
-      .input('amount', sql.Int, SIGNUP_AMOUNT)
-      .query(`
-        INSERT INTO tb_signup_payment (joiner_name, joiner_phone, order_id, order_name, amount, status)
-        VALUES (@joiner_name, @joiner_phone, @order_id, @order_name, @amount, 'READY')
-      `);
 
     res.json({
       success: true,
-      data: { orderId, amount: SIGNUP_AMOUNT, orderName: ORDER_NAME, customerName: String(name).trim() }
+      data: {
+        orderId,
+        amount: SIGNUP_AMOUNT,
+        orderName: ORDER_NAME,
+        customerName: String(name).trim()
+      }
     });
   } catch (error) {
     console.error('가입 결제 준비 오류:', error);
@@ -50,72 +89,54 @@ router.post('/prepare', async (req, res) => {
 // 2) 결제 승인: 토스 결제 승인 후 저장
 router.post('/confirm', async (req, res) => {
   try {
-    const { paymentKey, orderId, amount } = req.body;
+    const { paymentKey, orderId, amount, name, phone } = req.body;
 
-    if (!paymentKey || !orderId || !amount) {
+    if (!paymentKey || !orderId || !amount || !name || !phone) {
       return res.status(400).json({ success: false, message: '결제 정보가 누락되었습니다.' });
+    }
+
+    if (!isValidSignupOrderId(orderId)) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 주문입니다.' });
     }
 
     const pool = await getConnection();
 
-    // 주문 조회
     const orderResult = await pool.request()
       .input('order_id', sql.NVarChar, orderId)
-      .query(`SELECT TOP 1 seq, amount, status FROM tb_signup_payment WHERE order_id = @order_id`);
+      .query(`SELECT TOP 1 status FROM tb_signup_payment WHERE order_id = @order_id`);
 
-    if (orderResult.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: '주문 정보를 찾을 수 없습니다.' });
+    if (orderResult.recordset.length > 0) {
+      if (orderResult.recordset[0].status === 'DONE') {
+        return res.json({ success: true, data: { orderId, status: 'DONE' } });
+      }
+      return res.status(400).json({ success: false, message: '이미 처리된 주문입니다.' });
     }
 
-    const order = orderResult.recordset[0];
-
-    // 이미 완료된 주문이면 멱등 처리
-    if (order.status === 'DONE') {
-      return res.json({ success: true, data: { orderId, status: 'DONE' } });
-    }
-
-    // 금액 검증 (서버 저장 금액과 일치해야 함)
-    if (Number(amount) !== order.amount) {
+    if (Number(amount) !== SIGNUP_AMOUNT) {
       return res.status(400).json({ success: false, message: '결제 금액이 일치하지 않습니다.' });
     }
 
-    // 토스 결제 승인
-    const payment = await confirmPayment({ paymentKey, orderId, amount: order.amount });
+    const payment = await confirmPayment({ paymentKey, orderId, amount: SIGNUP_AMOUNT });
 
-    await pool.request()
-      .input('order_id', sql.NVarChar, orderId)
-      .input('payment_key', sql.NVarChar, payment.paymentKey || paymentKey)
-      .input('status', sql.NVarChar, payment.status || 'DONE')
-      .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
-      .input('raw_response', sql.NVarChar, JSON.stringify(payment))
-      .query(`
-        UPDATE tb_signup_payment
-        SET payment_key = @payment_key,
-            status = @status,
-            paid_at = @paid_at,
-            raw_response = @raw_response
-        WHERE order_id = @order_id
-      `);
+    await saveSignupPaymentSuccess(pool, {
+      name,
+      phone,
+      orderId,
+      payment
+    });
 
     res.json({ success: true, data: { orderId, status: payment.status || 'DONE' } });
   } catch (error) {
     console.error('가입 결제 승인 오류:', error);
 
-    // 승인 실패 시 상태 갱신 (best-effort)
     try {
-      if (req.body && req.body.orderId) {
-        const pool = await getConnection();
-        await pool.request()
-          .input('order_id', sql.NVarChar, req.body.orderId)
-          .input('raw_response', sql.NVarChar, JSON.stringify(error.tossResponse || { message: error.message }))
-          .query(`
-            UPDATE tb_signup_payment
-            SET status = 'FAILED', raw_response = @raw_response
-            WHERE order_id = @order_id AND status <> 'DONE'
-          `);
+      const { orderId, amount, name, phone } = req.body || {};
+      if (orderId && name && phone && isValidSignupOrderId(orderId) && Number(amount) === SIGNUP_AMOUNT) {
+        const failPool = await getConnection();
+        await saveSignupPaymentFailure(failPool, { name, phone, orderId, error });
       }
     } catch (e) {
-      console.error('가입 결제 실패 상태 갱신 오류:', e);
+      console.error('가입 결제 실패 이력 저장 오류:', e);
     }
 
     res.status(500).json({ success: false, message: error.message || '결제 승인 중 오류가 발생했습니다.' });

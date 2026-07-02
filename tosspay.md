@@ -105,6 +105,8 @@ VITE_TOSS_CLIENT_KEY=test_ck_여기에_클라이언트키
 | POST | `/charge-now` | (테스트용) 특정 유저 즉시 결제 |
 | POST | `/run-billing` | (테스트용) 정기결제 배치 수동 실행 |
 | POST | `/webhook` | 토스 결제 상태 웹훅 수신 |
+| POST | `/extend/prepare` | 2주 연장 일회성 결제 준비 (orderId 발급, DB 저장 없음) |
+| POST | `/extend/confirm` | 2주 연장 결제 승인 + `end_date` 2주 연장 |
 
 ### 인증 헤더
 토스 시크릿 키를 `시크릿키:` 형태로 Base64 인코딩해 `Basic` 인증에 사용합니다.
@@ -129,6 +131,14 @@ npm install @tosspayments/payment-sdk
 
 > 본 프로젝트는 메뉴 전환(activeMenu) 방식이므로, successUrl/failUrl을 루트(`/`)에 쿼리스트링으로 두고
 > `App.tsx`가 이를 감지해 구독 페이지를 표시하도록 구현했습니다.
+
+### 6.3 2주 연장 플랜 (일회성 결제)
+- **구매하기** 클릭 → `/extend/prepare` → 토스 `requestPayment` (가입 결제와 동일 방식)
+- **조건**: 로그인한 사용자 누구나 구매 가능 (구독 여부 무관)
+- **금액**: 550,000원 (VAT 포함, 서버에서 강제)
+- **결제 성공**: `tb_subscription_payment` 저장 + `tb_user.end_date` **2주** 연장
+- **결제 실패**: `tb_subscription_payment`에 `FAILED` 저장
+- **결제창 취소**: DB 저장 없음
 
 ---
 

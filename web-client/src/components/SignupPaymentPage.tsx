@@ -52,12 +52,24 @@ function SignupPaymentPage() {
       setView('processing')
       ;(async () => {
         try {
+          const draftRaw = sessionStorage.getItem('signupPaymentDraft')
+          const draft = draftRaw ? JSON.parse(draftRaw) : null
+          const draftName = draft?.name || ''
+          const draftPhone = draft?.phone || ''
+
           const response = await fetch(`${API_URL}/confirm`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey, orderId, amount: Number(amount) })
+            body: JSON.stringify({
+              paymentKey,
+              orderId,
+              amount: Number(amount),
+              name: draftName,
+              phone: draftPhone
+            })
           })
           const result = await response.json()
+          sessionStorage.removeItem('signupPaymentDraft')
           if (result.success) {
             setView('success')
           } else {
@@ -111,6 +123,12 @@ function SignupPaymentPage() {
       }
 
       const { orderId, amount, orderName, customerName } = prepareResult.data
+
+      sessionStorage.setItem('signupPaymentDraft', JSON.stringify({
+        name: name.trim(),
+        phone: phone.trim(),
+        orderId
+      }))
 
       // 2) 토스 결제창 호출
       const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)

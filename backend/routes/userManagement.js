@@ -71,7 +71,9 @@ router.get('/', async (req, res) => {
         SELECT TOP 1 status AS sub_status
         FROM tb_subscription sub
         WHERE sub.user_id = tb_user.user_id
-        ORDER BY sub.seq DESC
+        ORDER BY
+          CASE WHEN sub.status = 'ACTIVE' THEN 0 ELSE 1 END,
+          sub.seq DESC
       ) s
       WHERE 1=1
     `;

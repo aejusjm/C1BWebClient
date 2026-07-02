@@ -505,7 +505,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
               <strong>(주)에스에이치에스코퍼레이션</strong>
             </p>
             <p><span className="footer-bullet">•</span><span className="footer-label">대표자명</span> 서하성</p>
-            <p><span className="footer-bullet">•</span><span className="footer-label">사업장 주소</span> 18469 경기도 화성시 동탄첨단산업1로 27 (영천동)</p>
+            <p><span className="footer-bullet">•</span><span className="footer-label">사업장 주소</span> 18469 경기도 화성시 동탄첨단산업1로 27 (영천동) 에이동 2714호~2717호</p>
             <p><span className="footer-bullet">•</span><span className="footer-label">대표 전화</span> 1555-5696</p>
             <p><span className="footer-bullet">•</span><span className="footer-label">사업자 등록번호</span> 519-81-04227</p>
             <p>

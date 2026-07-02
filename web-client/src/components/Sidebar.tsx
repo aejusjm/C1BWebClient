@@ -326,7 +326,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
       <div className="sidebar-footer">
         <button className="subscribe-btn" onClick={() => onMenuChange('subscription-plan')}>
           <span className="subscribe-icon">🧾</span>
-          구독 플랜 확인
+          구독 플랜
         </button>
       </div>
     </aside>
