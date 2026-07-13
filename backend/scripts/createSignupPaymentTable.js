@@ -25,6 +25,16 @@ async function createTable() {
         CREATE UNIQUE INDEX UX_tb_signup_payment_order_id ON tb_signup_payment (order_id);
       END
     `);
+
+    await pool.request().query(`
+      IF COL_LENGTH('tb_signup_payment', 'refund_amount') IS NULL
+        ALTER TABLE tb_signup_payment ADD refund_amount INT NOT NULL DEFAULT 0;
+      IF COL_LENGTH('tb_signup_payment', 'refund_reason') IS NULL
+        ALTER TABLE tb_signup_payment ADD refund_reason NVARCHAR(500) NULL;
+      IF COL_LENGTH('tb_signup_payment', 'refunded_at') IS NULL
+        ALTER TABLE tb_signup_payment ADD refunded_at DATETIME NULL;
+    `);
+
     console.log('✅ tb_signup_payment 확인/생성 완료');
     console.log('🎉 가입 결제 테이블 생성 작업 완료');
   } catch (error) {

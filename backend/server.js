@@ -39,6 +39,8 @@ const fakePurchaseInfoRoutes = require('./routes/fakePurchaseInfo');
 const subscriptionRoutes = require('./routes/subscription');
 const subscriptionManagementRoutes = require('./routes/subscriptionManagement');
 const signupPaymentRoutes = require('./routes/signupPayment');
+const signupPaymentManagementRoutes = require('./routes/signupPaymentManagement');
+const adminDirectPaymentRoutes = require('./routes/adminDirectPayment');
 app.use('/api/auth', authRoutes);
 app.use('/api/image', imageProxyRoutes);
 app.use('/api/standard-info', standardInfoRoutes);
@@ -65,6 +67,8 @@ app.use('/api/fake-purchase-info', fakePurchaseInfoRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/subscription-management', subscriptionManagementRoutes);
 app.use('/api/signup-payment', signupPaymentRoutes);
+app.use('/api/signup-payment-management', signupPaymentManagementRoutes);
+app.use('/api/admin-direct-payment', adminDirectPaymentRoutes);
 
 // 업로드된 파일 정적 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

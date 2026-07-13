@@ -8,7 +8,7 @@ BEGIN
         user_id       NVARCHAR(50)  NOT NULL,                 -- tb_user.user_id
         customer_key  NVARCHAR(100) NOT NULL,                 -- 토스 customerKey (유저별 고유)
         billing_key   NVARCHAR(200) NULL,                     -- 발급된 빌링키 (민감정보)
-        plan_type     NVARCHAR(20)  NOT NULL,                 -- 'BASIC' / 'EXTRA'
+        plan_type     NVARCHAR(200) NOT NULL,                 -- 'BASIC' / 'EXTRA' / 관리자 결제명 등
         amount        INT           NOT NULL,                 -- 실제 청구 금액(원, VAT 포함)
         status        NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',-- PENDING/ACTIVE/CANCELED/FAILED
         next_pay_date DATE          NULL,                     -- 다음 결제 예정일
@@ -29,7 +29,7 @@ BEGIN
         user_id      NVARCHAR(50)  NOT NULL,
         order_id     NVARCHAR(100) NOT NULL,                  -- 우리가 생성하는 고유 주문번호
         payment_key  NVARCHAR(200) NULL,                      -- 토스 결제키
-        plan_type    NVARCHAR(20)  NULL,
+        plan_type    NVARCHAR(200) NULL,
         amount       INT           NOT NULL,
         status       NVARCHAR(20)  NOT NULL,                  -- DONE/CANCELED/FAILED
         paid_at      DATETIME      NULL,

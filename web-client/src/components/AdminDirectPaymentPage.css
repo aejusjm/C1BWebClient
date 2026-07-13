@@ -1,0 +1,178 @@
+.admin-direct-payment-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+.admin-direct-payment-header {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-direct-payment-page .page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.admin-direct-payment-card {
+  background: white;
+  padding: 36px 40px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-direct-payment-card .form-title {
+  margin: 0 0 28px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #e0e0e0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.admin-pay-field {
+  margin-bottom: 22px;
+}
+
+.admin-pay-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+}
+
+.admin-pay-field input[type='text'],
+.admin-pay-field input[type='number'],
+.admin-pay-field select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #333;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-pay-field input:focus,
+.admin-pay-field select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
+}
+
+.admin-pay-type-group {
+  display: flex;
+  gap: 12px;
+}
+
+.admin-pay-type-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+
+.admin-pay-type-option.active {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.admin-pay-type-option input {
+  margin: 0;
+}
+
+.admin-pay-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.admin-pay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.admin-pay-reset-btn,
+.admin-pay-submit-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-pay-reset-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.admin-pay-reset-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.admin-pay-submit-btn {
+  background: linear-gradient(135deg, #2b7fff 0%, #1d4ed8 55%, #1e40af 100%);
+  color: white;
+  min-width: 140px;
+}
+
+.admin-pay-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.35);
+}
+
+.admin-pay-reset-btn:disabled,
+.admin-pay-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 768px) {
+  .admin-direct-payment-page {
+    padding: 12px;
+  }
+
+  .admin-direct-payment-card {
+    padding: 24px 18px;
+  }
+
+  .admin-pay-type-group {
+    flex-direction: column;
+  }
+
+  .admin-pay-actions {
+    flex-direction: column-reverse;
+  }
+
+  .admin-pay-reset-btn,
+  .admin-pay-submit-btn {
+    width: 100%;
+  }
+}

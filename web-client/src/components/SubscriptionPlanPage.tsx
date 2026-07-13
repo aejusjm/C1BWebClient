@@ -6,6 +6,7 @@ import { useUser } from '../contexts/UserContext'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/subscription`
+const STANDARD_INFO_URL = `${API_BASE}/api/standard-info`
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || ''
 
 type PlanType = 'BASIC' | 'EXTRA' | 'EXTEND'
@@ -14,6 +15,23 @@ function SubscriptionPlanPage() {
   const { showAlert } = useAlert()
   const { userInfo } = useUser()
   const [processing, setProcessing] = useState(false)
+  const [basicFee, setBasicFee] = useState<number | null>(null)
+
+  // 기준정보관리 구독료 조회
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const response = await fetch(STANDARD_INFO_URL)
+        const result = await response.json()
+        if (result.success) {
+          const fee = Number(result.data?.subFee)
+          setBasicFee(Number.isFinite(fee) && fee > 0 ? fee : null)
+        }
+      } catch (error) {
+        console.error('구독료 조회 오류:', error)
+      }
+    })()
+  }, [])
 
   // 결제 성공/실패 리다이렉트 처리
   useEffect(() => {
@@ -247,7 +265,11 @@ function SubscriptionPlanPage() {
         <div className="plan-card">
           <div className="plan-badge">기본 플렌</div>
           <div className="plan-price">
-            <strong>월 990,000원</strong>
+            <strong>
+              {basicFee !== null
+                ? `월 ${basicFee.toLocaleString()}원`
+                : '월 - 원'}
+            </strong>
             <span>(VAT 포함)</span>
           </div>
           <div className="plan-divider" />

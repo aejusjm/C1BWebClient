@@ -1,6 +1,7 @@
 // 좌측 사이드바 컴포넌트 - 로고, 사용자 정보, 메뉴 네비게이션
 import './Sidebar.css'
 import { useAlert } from '../contexts/AlertContext'
+import { isAdminMenu, isAdminUser } from '../constants/adminMenus'
 
 interface UserInfo {
   userId: string
@@ -20,7 +21,15 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
   const { showAlert } = useAlert()
   
   // 관리자 여부 확인
-  const isAdmin = userInfo.userType === '관리자'
+  const isAdmin = isAdminUser(userInfo.userType)
+
+  const handleMenuClick = (menu: string) => {
+    if (isAdminMenu(menu) && !isAdmin) {
+      void showAlert('관리자만 접근할 수 있는 메뉴입니다.')
+      return
+    }
+    onMenuChange(menu)
+  }
 
   // 만료일 포맷팅 및 남은 일수 계산
   const getExpiryInfo = () => {
@@ -70,14 +79,14 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
   return (
     <aside className="sidebar">
       {/* 로고 영역 */}
-      <div className="logo-section" onClick={() => onMenuChange('dashboard')}>
+      <div className="logo-section" onClick={() => handleMenuClick('dashboard')}>
         <img src="/c1b_logo.png" alt="C1B Logo" className="logo-image" />
       </div>
 
       {/* 사용자 정보 영역 */}
       <div className="user-info">
         <div className="user-name" 
-          onClick={() => onMenuChange('account')}
+          onClick={() => handleMenuClick('account')}
           style={{ cursor: 'pointer' }}
         >
           {userInfo.userName}({userInfo.userId})
@@ -125,7 +134,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
             <>
               <li 
                 className={activeMenu === 'dashboard' ? 'active' : ''}
-                onClick={() => onMenuChange('dashboard')}
+                onClick={() => handleMenuClick('dashboard')}
               >
                 <div className="menu-title">
                   <span className="menu-icon">📊</span> 대시보드
@@ -133,7 +142,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </li>
               <li 
                 className={activeMenu === 'orders' ? 'active' : ''}
-                onClick={() => onMenuChange('orders')}
+                onClick={() => handleMenuClick('orders')}
               >
                 <div className="menu-title">
                   <span className="menu-icon">🛒</span> 주문관리
@@ -141,7 +150,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </li>
               <li 
                 className={activeMenu === 'products' ? 'active' : ''}
-                onClick={() => onMenuChange('products')}
+                onClick={() => handleMenuClick('products')}
               >
                 <div className="menu-title">
                   <span className="menu-icon">📦</span> 상품관리
@@ -149,7 +158,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </li>
               <li 
                 className={activeMenu === 'order-sales-stats' ? 'active' : ''}
-                onClick={() => onMenuChange('order-sales-stats')}
+                onClick={() => handleMenuClick('order-sales-stats')}
               >
                 <div className="menu-title">
                   <span className="menu-icon">💰</span> 매출통계
@@ -157,7 +166,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </li>
               <li 
                 className={activeMenu === 'notices' ? 'active' : ''}
-                onClick={() => onMenuChange('notices')}
+                onClick={() => handleMenuClick('notices')}
               >
                 <div className="menu-title">
                   <span className="menu-icon">📢</span> 공지사항
@@ -174,19 +183,19 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'account' ? 'active' : ''}
-                  onClick={() => onMenuChange('account')}
+                  onClick={() => handleMenuClick('account')}
                 >
                   <span className="submenu-icon">👤</span> 계정관리
                 </li>
                 <li 
                   className={activeMenu === 'basic' ? 'active' : ''}
-                  onClick={() => onMenuChange('basic')}
+                  onClick={() => handleMenuClick('basic')}
                 >
                   <span className="submenu-icon">📋</span> 기본정보
                 </li>
                 <li 
                   className={activeMenu === 'market' ? 'active' : ''}
-                  onClick={() => onMenuChange('market')}
+                  onClick={() => handleMenuClick('market')}
                 >
                   <span className="submenu-icon">🔗</span> 마켓연동
                 </li>
@@ -202,49 +211,43 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'standard-info' ? 'active' : ''}
-                  onClick={() => onMenuChange('standard-info')}
+                  onClick={() => handleMenuClick('standard-info')}
                 >
                   <span className="submenu-icon">📊</span> 기준정보관리
                 </li>
                 <li 
                   className={activeMenu === 'user-management' ? 'active' : ''}
-                  onClick={() => onMenuChange('user-management')}
+                  onClick={() => handleMenuClick('user-management')}
                 >
                   <span className="submenu-icon">👥</span> 사용자관리
                 </li>
                 <li 
-                  className={activeMenu === 'subscription-management' ? 'active' : ''}
-                  onClick={() => onMenuChange('subscription-management')}
-                >
-                  <span className="submenu-icon">💳</span> 구독관리
-                </li>
-                <li 
                   className={activeMenu === 'notice-management' ? 'active' : ''}
-                  onClick={() => onMenuChange('notice-management')}
+                  onClick={() => handleMenuClick('notice-management')}
                 >
                   <span className="submenu-icon">📢</span> 공지관리
                 </li>
                 <li 
                   className={activeMenu === 'detail-page-management' ? 'active' : ''}
-                  onClick={() => onMenuChange('detail-page-management')}
+                  onClick={() => handleMenuClick('detail-page-management')}
                 >
                   <span className="submenu-icon">📄</span> 상세페이지관리
                 </li>
                 <li 
                   className={activeMenu === 'deleted-products' ? 'active' : ''}
-                  onClick={() => onMenuChange('deleted-products')}
+                  onClick={() => handleMenuClick('deleted-products')}
                 >
                   <span className="submenu-icon">🗑️</span> 삭제상품관리
                 </li>
                 <li 
                   className={activeMenu === 'batch-log' ? 'active' : ''}
-                  onClick={() => onMenuChange('batch-log')}
+                  onClick={() => handleMenuClick('batch-log')}
                 >
                   <span className="submenu-icon">📋</span> 배치로그관리
                 </li>
                 <li 
                   className={activeMenu === 'server-management' ? 'active' : ''}
-                  onClick={() => onMenuChange('server-management')}
+                  onClick={() => handleMenuClick('server-management')}
                 >
                   <span className="submenu-icon">🖥️</span> 서버관리
                 </li>
@@ -260,27 +263,55 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'user-sales-stats' ? 'active' : ''}
-                  onClick={() => onMenuChange('user-sales-stats')}
+                  onClick={() => handleMenuClick('user-sales-stats')}
                 >
                   <span className="submenu-icon">💰</span> 사용자별 매출
                 </li>
                 <li 
                   className={activeMenu === 'daily-sales-stats' ? 'active' : ''}
-                  onClick={() => onMenuChange('daily-sales-stats')}
+                  onClick={() => handleMenuClick('daily-sales-stats')}
                 >
                   <span className="submenu-icon">📊</span> 사용자별 매출 추이
                 </li>
                 <li 
                   className={activeMenu === 'mobile-sales-stats' ? 'active' : ''}
-                  onClick={() => onMenuChange('mobile-sales-stats')}
+                  onClick={() => handleMenuClick('mobile-sales-stats')}
                 >
                   <span className="submenu-icon">📱</span> 사용자별 매출(모바일)
                 </li>
                 <li 
                   className={activeMenu === 'upload-product-stats' ? 'active' : ''}
-                  onClick={() => onMenuChange('upload-product-stats')}
+                  onClick={() => handleMenuClick('upload-product-stats')}
                 >
                   <span className="submenu-icon">📦</span> 상품등록 현황
+                </li>
+              </ul>
+            </li>
+          )}
+          {/* 결제관리 메뉴 - 관리자만 표시 */}
+          {isAdmin && (
+            <li className="menu-parent">
+              <div className="menu-title">
+                <span className="menu-icon">💳</span> 결제관리
+              </div>
+              <ul className="submenu">
+                <li
+                  className={activeMenu === 'subscription-management' ? 'active' : ''}
+                  onClick={() => handleMenuClick('subscription-management')}
+                >
+                  <span className="submenu-icon">🧾</span> 구독결제관리
+                </li>
+                <li
+                  className={activeMenu === 'signup-payment-management' ? 'active' : ''}
+                  onClick={() => handleMenuClick('signup-payment-management')}
+                >
+                  <span className="submenu-icon">📝</span> 가입신청내역
+                </li>
+                <li
+                  className={activeMenu === 'admin-direct-payment' ? 'active' : ''}
+                  onClick={() => handleMenuClick('admin-direct-payment')}
+                >
+                  <span className="submenu-icon">🖊️</span> 관리자 직접 결제
                 </li>
               </ul>
             </li>
@@ -294,25 +325,25 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'fake-purchase-user' ? 'active' : ''}
-                  onClick={() => onMenuChange('fake-purchase-user')}
+                  onClick={() => handleMenuClick('fake-purchase-user')}
                 >
                   <span className="submenu-icon">👥</span> 가구매 사용자관리
                 </li>
                 <li 
                   className={activeMenu === 'fake-purchase-info' ? 'active' : ''}
-                  onClick={() => onMenuChange('fake-purchase-info')}
+                  onClick={() => handleMenuClick('fake-purchase-info')}
                 >
                   <span className="submenu-icon">📋</span> 가구매 리스트
                 </li>
                 <li 
                   className={activeMenu === 'fake-purchase-product' ? 'active' : ''}
-                  onClick={() => onMenuChange('fake-purchase-product')}
+                  onClick={() => handleMenuClick('fake-purchase-product')}
                 >
                   <span className="submenu-icon">🏷️</span> 가구매 상품관리
                 </li>
                 <li 
                   className={activeMenu === 'fake-purchase-schedule' ? 'active' : ''}
-                  onClick={() => onMenuChange('fake-purchase-schedule')}
+                  onClick={() => handleMenuClick('fake-purchase-schedule')}
                 >
                   <span className="submenu-icon">📅</span> 가구매 일정관리
                 </li>
@@ -324,7 +355,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
 
       {/* 이미지 공지 및 이벤트 섹션 */}
       <div className="sidebar-footer">
-        <button className="subscribe-btn" onClick={() => onMenuChange('subscription-plan')}>
+        <button className="subscribe-btn" onClick={() => handleMenuClick('subscription-plan')}>
           <span className="subscribe-icon">🧾</span>
           구독 플랜
         </button>
