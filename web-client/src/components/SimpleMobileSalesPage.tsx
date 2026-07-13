@@ -4,9 +4,15 @@ import './SimpleMobileSalesPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
 
 /** 테스트계정 제외 시 제외할 user_id */
 const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser'])
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface UserSalesStats {
   user_id: string
@@ -28,15 +34,38 @@ interface SimpleMobileSalesPageProps {
 function SimpleMobileSalesPage({ onNavigate }: SimpleMobileSalesPageProps) {
   // 필터 상태
   const [dateFilter, setDateFilter] = useState('today')
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
   // 데이터 상태
   const [stats, setStats] = useState<UserSalesStats[]>([])
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
   // 데이터 로드
   useEffect(() => {
     loadStats()
-  }, [dateFilter])
+  }, [dateFilter, cohortSeq])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   // 통계 데이터 로드
   const loadStats = async () => {
@@ -44,6 +73,9 @@ function SimpleMobileSalesPage({ onNavigate }: SimpleMobileSalesPageProps) {
     try {
       // 총매출 내림차순 고정
       let url = `${API_URL}/user-sales?dateFilter=${dateFilter}&sortField=total_sales&sortOrder=desc`
+      if (cohortSeq) {
+        url += `&cohortSeq=${cohortSeq}`
+      }
       
       const response = await fetch(url)
       
@@ -96,6 +128,18 @@ function SimpleMobileSalesPage({ onNavigate }: SimpleMobileSalesPageProps) {
 
       {/* 날짜 필터 */}
       <div className="simple-filter-section">
+        <div className="cohort-filter-row" style={{ marginBottom: '10px' }}>
+          <select
+            value={cohortSeq}
+            onChange={(e) => setCohortSeq(e.target.value ? Number(e.target.value) : '')}
+            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}
+          >
+            <option value="">기수: 전체</option>
+            {cohorts.map((c) => (
+              <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+            ))}
+          </select>
+        </div>
         <div className="date-filters">
           <button 
             className={dateFilter === 'today' ? 'active' : ''}

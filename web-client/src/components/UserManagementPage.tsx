@@ -44,6 +44,11 @@ interface ServerInfo {
   server_name: string
 }
 
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
+
 interface User {
   user_id: string
   user_pwd: string
@@ -72,6 +77,7 @@ interface User {
   upload_stop: string
   ga_buy: string | null
   ga_buy_cnt: number
+  cohort_seq: number | null
   marketCount?: number
   sub_status?: string | null
 }
@@ -130,6 +136,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const [searchParams, setSearchParams] = useState({
     userName: '',
     userId: '',
+    cohortSeq: '' as number | '',
     /** 사용여부: 체크 시 use_yn = Y 인 사용자만 */
     filterUseYn: false,
     /** 업로드: 체크 시 upload_stop = N(정상) 인 사용자만 */
@@ -164,6 +171,8 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   
   // 서버 목록 상태
   const [servers, setServers] = useState<ServerInfo[]>([])
+  // 기수 목록 상태
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
   
   // 상세이미지 모달 상태
   const [showDetailImageModal, setShowDetailImageModal] = useState(false)
@@ -174,10 +183,11 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const [bottomImagePreview, setBottomImagePreview] = useState<string | null>(null)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
 
-  // 컴포넌트 마운트 시 전체 사용자 조회 및 서버 목록 조회
+  // 컴포넌트 마운트 시 전체 사용자 조회 및 서버/기수 목록 조회
   useEffect(() => {
     loadUsers(searchParams)
     loadServers()
+    loadCohorts()
     loadGaGroups()
   }, [])
 
@@ -197,6 +207,27 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       }
     } catch (error) {
       console.error('서버 목록 조회 오류:', error)
+    }
+  }
+
+  // 기수 목록 조회
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/cohorts`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
     }
   }
 
@@ -223,6 +254,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   const loadUsers = async (params?: {
     userName?: string
     userId?: string
+    cohortSeq?: number | ''
     filterUseYn?: boolean
     filterUploadNormal?: boolean
     filterExcludeFakePurchase?: boolean
@@ -234,6 +266,7 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
 
       if (params?.userName?.trim()) queryParams.append('userName', params.userName.trim())
       if (params?.userId?.trim()) queryParams.append('userId', params.userId.trim())
+      if (params?.cohortSeq) queryParams.append('cohortSeq', String(params.cohortSeq))
       if (params?.filterUseYn) queryParams.append('useYn', '1')
       if (params?.filterUploadNormal) queryParams.append('uploadNormal', '1')
       if (params?.filterExcludeFakePurchase) queryParams.append('excludeFakePurchase', '1')
@@ -837,7 +870,8 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
       proc_ord: 0,
       upload_stop: 'N',
       ga_buy: null,  // 기본값 null (체크 안 됨)
-      ga_buy_cnt: 0
+      ga_buy_cnt: 0,
+      cohort_seq: null
     })
     setShowEditModal(true)
   }
@@ -1129,6 +1163,26 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
               onKeyPress={handleKeyPress}
               placeholder="사용자ID 입력"
             />
+          </div>
+          <div className="search-group">
+            <label className="search-label">기수:</label>
+            <select
+              className="search-input"
+              value={searchParams.cohortSeq}
+              onChange={e =>
+                applySearchParamsAndRefetch({
+                  cohortSeq: e.target.value ? Number(e.target.value) : ''
+                })
+              }
+              disabled={loading}
+            >
+              <option value="">전체</option>
+              {cohorts.map((cohort) => (
+                <option key={cohort.seq} value={cohort.seq}>
+                  {cohort.cohort_name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="search-check-inline" aria-label="검색 조건">
             <label className="search-check-item">
@@ -1714,6 +1768,27 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
                     onChange={(e) => handleEditChange('biz_hours', e.target.value)}
                     placeholder="오전 9시 ~ 오후 6시"
                   />
+                </div>
+
+                {/* 기수 */}
+                <div className="modal-field">
+                  <label>기수</label>
+                  <select
+                    value={editData.cohort_seq ?? ''}
+                    onChange={(e) =>
+                      handleEditChange(
+                        'cohort_seq',
+                        e.target.value === '' ? null : parseInt(e.target.value, 10)
+                      )
+                    }
+                  >
+                    <option value="">선택하세요</option>
+                    {cohorts.map((cohort) => (
+                      <option key={cohort.seq} value={cohort.seq}>
+                        {cohort.cohort_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

@@ -29,6 +29,12 @@ ChartJS.register(
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface DailySalesStats {
   pay_date: string
@@ -170,6 +176,8 @@ function DailySalesStatsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [aggregationType, setAggregationType] = useState<'day' | 'week' | 'month'>('day')
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
@@ -184,17 +192,38 @@ function DailySalesStatsPage() {
   const [selectedWeekday, setSelectedWeekday] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
   // 데이터 로드
   useEffect(() => {
     if (userInfo?.userId) {
       loadStats()
       loadUserChartData()
     }
-  }, [dateFilter, useCustomDate, startDate, endDate, aggregationType, userInfo?.userId])
+  }, [dateFilter, useCustomDate, startDate, endDate, aggregationType, cohortSeq, userInfo?.userId])
 
   useEffect(() => {
     setSelectedWeekday(null)
-  }, [totalChartData.dates, dateFilter, useCustomDate, startDate, endDate, aggregationType])
+  }, [totalChartData.dates, dateFilter, useCustomDate, startDate, endDate, aggregationType, cohortSeq])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -380,6 +409,9 @@ function DailySalesStatsPage() {
       if (useCustomDate && startDate && endDate) {
         params.append('startDate', startDate)
         params.append('endDate', endDate)
+      }
+      if (cohortSeq) {
+        params.append('cohortSeq', String(cohortSeq))
       }
       
       const url = `${API_URL}/daily-sales-by-user?${params.toString()}`
@@ -629,6 +661,17 @@ function DailySalesStatsPage() {
 
         {/* 합계 기준 선택 */}
         <div className="aggregation-section">
+          <span className="filter-label">기수:</span>
+          <select
+            value={cohortSeq}
+            onChange={(e) => setCohortSeq(e.target.value ? Number(e.target.value) : '')}
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', marginRight: '12px' }}
+          >
+            <option value="">전체</option>
+            {cohorts.map((c) => (
+              <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+            ))}
+          </select>
           <span className="filter-label">합계기준:</span>
           <div className="aggregation-buttons">
             <button 

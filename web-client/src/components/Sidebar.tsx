@@ -222,6 +222,12 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">👥</span> 사용자관리
                 </li>
                 <li 
+                  className={activeMenu === 'cohort-management' ? 'active' : ''}
+                  onClick={() => handleMenuClick('cohort-management')}
+                >
+                  <span className="submenu-icon">🎓</span> 기수관리
+                </li>
+                <li 
                   className={activeMenu === 'notice-management' ? 'active' : ''}
                   onClick={() => handleMenuClick('notice-management')}
                 >
@@ -254,11 +260,11 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </ul>
             </li>
           )}
-          {/* 관리자통계관리 메뉴 - 관리자만 표시 */}
+          {/* 통계통합관리 메뉴 - 관리자만 표시 */}
           {isAdmin && (
             <li className="menu-parent">
               <div className="menu-title">
-                <span className="menu-icon">📈</span> 관리자통계관리
+                <span className="menu-icon">📈</span> 통계통합관리
               </div>
               <ul className="submenu">
                 <li 
@@ -288,11 +294,11 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
               </ul>
             </li>
           )}
-          {/* 결제관리 메뉴 - 관리자만 표시 */}
+          {/* 구독 및 결제관리 메뉴 - 관리자만 표시 */}
           {isAdmin && (
             <li className="menu-parent">
               <div className="menu-title">
-                <span className="menu-icon">💳</span> 결제관리
+                <span className="menu-icon">💳</span> 구독 및 결제관리
               </div>
               <ul className="submenu">
                 <li
@@ -306,6 +312,17 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   onClick={() => handleMenuClick('signup-payment-management')}
                 >
                   <span className="submenu-icon">📝</span> 가입신청내역
+                </li>
+                <li
+                  className={activeMenu === 'subscription-settlement' ? 'active' : ''}
+                  onClick={() => handleMenuClick('subscription-settlement')}
+                >
+                  <span className="submenu-icon submenu-icon-svg" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                      <path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v4h10V4H7zm1 6v2h2v-2H8zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM8 14v2h2v-2H8zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM8 18v2h2v-2H8zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z" />
+                    </svg>
+                  </span>
+                  구독료정산
                 </li>
                 <li
                   className={activeMenu === 'admin-direct-payment' ? 'active' : ''}

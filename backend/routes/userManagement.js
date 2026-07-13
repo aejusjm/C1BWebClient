@@ -3,6 +3,23 @@ const express = require('express');
 const router = express.Router();
 const { getConnection, sql } = require('../config/database');
 
+let cohortSeqColumnReady = false;
+
+async function ensureCohortSeqColumn(pool) {
+  if (cohortSeqColumnReady) return;
+  await pool.request().query(`
+    IF COL_LENGTH('tb_user', 'cohort_seq') IS NULL
+      ALTER TABLE tb_user ADD cohort_seq INT NULL;
+  `);
+  cohortSeqColumnReady = true;
+}
+
+function toNullableInt(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const n = parseInt(String(value), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 // 서버 목록 조회 API
 router.get('/servers', async (req, res) => {
   try {
@@ -31,9 +48,10 @@ router.get('/servers', async (req, res) => {
 // 사용자 목록 조회 API (검색 기능 포함)
 router.get('/', async (req, res) => {
   try {
-    const { userName, userId, useYn, uploadNormal, excludeFakePurchase, reuploadTarget } = req.query;
+    const { userName, userId, useYn, uploadNormal, excludeFakePurchase, reuploadTarget, cohortSeq } = req.query;
     
     const pool = await getConnection();
+    await ensureCohortSeqColumn(pool);
     const columnCheckResult = await pool.request().query(`
       SELECT COLUMN_NAME
       FROM INFORMATION_SCHEMA.COLUMNS
@@ -64,7 +82,7 @@ router.get('/', async (req, res) => {
         margin_rate, user_phone, user_email, input_date, server_id,
         last_proc_date, proc_ord, batch_date, last_delete_date, use_yn,
         reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
-        cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, ${dispatchSelect}, ${rturnSelect},
+        cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, cohort_seq, ${dispatchSelect}, ${rturnSelect},
         s.sub_status
       FROM tb_user
       OUTER APPLY (
@@ -90,6 +108,15 @@ router.get('/', async (req, res) => {
     if (userId && String(userId).trim() !== '') {
       query += ` AND user_id LIKE @userId`;
       request.input('userId', sql.NVarChar, `%${String(userId).trim()}%`);
+    }
+
+    // 기수 검색
+    if (cohortSeq !== undefined && cohortSeq !== null && String(cohortSeq).trim() !== '') {
+      const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+      if (Number.isFinite(parsedCohortSeq)) {
+        query += ` AND cohort_seq = @cohortSeq`;
+        request.input('cohortSeq', sql.Int, parsedCohortSeq);
+      }
     }
 
     // 사용여부: 체크 시 use_yn = 'Y' 만
@@ -215,7 +242,8 @@ router.post('/', async (req, res) => {
     const {
       user_id, user_pwd, user_name, start_date, end_date, user_type,
       margin_rate, user_phone, user_email, server_id,
-      use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt
+      use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt,
+      cohort_seq
     } = req.body;
     
     // 필수 필드 검증
@@ -227,6 +255,7 @@ router.post('/', async (req, res) => {
     }
     
     const pool = await getConnection();
+    await ensureCohortSeqColumn(pool);
     
     // 중복 ID 체크
     const checkResult = await pool.request()
@@ -262,15 +291,16 @@ router.post('/', async (req, res) => {
       .input('upload_stop', sql.NVarChar, upload_stop || 'N')
       .input('ga_buy', sql.NVarChar, ga_buy || null)
       .input('ga_buy_cnt', sql.Int, ga_buy_cnt || 0)
+      .input('cohort_seq', sql.Int, toNullableInt(cohort_seq))
       .query(`
         INSERT INTO tb_user (
           user_id, user_pwd, user_name, start_date, end_date, user_type,
           margin_rate, user_phone, user_email, server_id, use_yn, reupload_target_yn,
-          get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt, input_date
+          get_cnt, del_cnt, del_days, sale_keep_days, proc_ord, upload_stop, ga_buy, ga_buy_cnt, cohort_seq, input_date
         ) VALUES (
           @user_id, @user_pwd, @user_name, @start_date, @end_date, @user_type,
           @margin_rate, @user_phone, @user_email, @server_id, @use_yn, @reupload_target_yn,
-          @get_cnt, @del_cnt, @del_days, @sale_keep_days, @proc_ord, @upload_stop, @ga_buy, @ga_buy_cnt, GETDATE()
+          @get_cnt, @del_cnt, @del_days, @sale_keep_days, @proc_ord, @upload_stop, @ga_buy, @ga_buy_cnt, @cohort_seq, GETDATE()
         )
       `);
     
@@ -300,11 +330,13 @@ router.put('/:userId', async (req, res) => {
       margin_rate, user_phone, user_email, server_id,
       use_yn, reupload_target_yn, get_cnt, del_cnt, del_days, sale_keep_days,
       proc_ord, last_proc_date, batch_date, last_delete_date,
-      cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt, // 추가된 필드
+      cs_phone, cs_phone_apply, biz_hours, upload_stop, ga_buy, ga_buy_cnt,
+      cohort_seq,
       current_password // 비밀번호 변경 시 현재 비밀번호 검증용
     } = req.body;
     
     const pool = await getConnection();
+    await ensureCohortSeqColumn(pool);
     
     // 비밀번호 변경 요청인 경우 현재 비밀번호 검증
     if (current_password) {
@@ -357,7 +389,8 @@ router.put('/:userId', async (req, res) => {
       .input('biz_hours', sql.NVarChar, biz_hours || '')
       .input('upload_stop', sql.NVarChar, upload_stop || 'N')
       .input('ga_buy', sql.NVarChar, ga_buy || null)
-      .input('ga_buy_cnt', sql.Int, ga_buy_cnt || 0);
+      .input('ga_buy_cnt', sql.Int, ga_buy_cnt || 0)
+      .input('cohort_seq', sql.Int, toNullableInt(cohort_seq));
     
     if (isMaskedPassword) {
       // 비밀번호 제외하고 업데이트
@@ -387,7 +420,8 @@ router.put('/:userId', async (req, res) => {
           biz_hours = @biz_hours,
           upload_stop = @upload_stop,
           ga_buy = @ga_buy,
-          ga_buy_cnt = @ga_buy_cnt
+          ga_buy_cnt = @ga_buy_cnt,
+          cohort_seq = @cohort_seq
         WHERE user_id = @userId
       `;
     } else {
@@ -420,7 +454,8 @@ router.put('/:userId', async (req, res) => {
           biz_hours = @biz_hours,
           upload_stop = @upload_stop,
           ga_buy = @ga_buy,
-          ga_buy_cnt = @ga_buy_cnt
+          ga_buy_cnt = @ga_buy_cnt,
+          cohort_seq = @cohort_seq
         WHERE user_id = @userId
       `;
     }

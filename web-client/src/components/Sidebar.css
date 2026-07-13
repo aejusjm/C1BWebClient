@@ -196,6 +196,16 @@
   align-items: center;
 }
 
+.submenu-icon-svg {
+  width: 15px;
+  height: 15px;
+  color: inherit;
+}
+
+.submenu-icon-svg svg {
+  display: block;
+}
+
 /* 사이드바 하단 */
 .sidebar-footer {
   padding: 20px;

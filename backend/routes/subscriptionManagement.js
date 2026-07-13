@@ -8,7 +8,7 @@ const { cancelPayment } = require('../services/tossPayments');
 // 구독결제 목록 조회 (검색: 사용자, 결제일자 범위)
 router.get('/', async (req, res) => {
   try {
-    const { userKeyword, startDate, endDate } = req.query;
+    const { userKeyword, startDate, endDate, cohortSeq } = req.query;
     const pool = await getConnection();
 
     const request = pool.request();
@@ -28,6 +28,13 @@ router.get('/', async (req, res) => {
       request.input('endDate', sql.Date, endDate.trim());
       // 종료일 포함 (다음날 0시 미만)
       whereClause += ' AND p.paid_at < DATEADD(DAY, 1, @endDate)';
+    }
+    if (cohortSeq !== undefined && cohortSeq !== null && String(cohortSeq).trim() !== '') {
+      const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+      if (Number.isFinite(parsedCohortSeq)) {
+        request.input('cohortSeq', sql.Int, parsedCohortSeq);
+        whereClause += ' AND u.cohort_seq = @cohortSeq';
+      }
     }
 
     const query = `

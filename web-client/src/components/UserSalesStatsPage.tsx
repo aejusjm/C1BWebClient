@@ -9,9 +9,15 @@ import './UserSalesStatsPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
 
 /** 테스트계정 제외 시 제외할 user_id (체크 시 목록에서 숨김) */
 const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser'])
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface UserSalesStats {
   user_id: string
@@ -50,6 +56,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [endDate, setEndDate] = useState('')
   const [hasSales, setHasSales] = useState(false)
   const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
   // 날짜 선택 모달
   const [showDateModal, setShowDateModal] = useState(false)
@@ -64,12 +72,33 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [stats, setStats] = useState<UserSalesStats[]>([])
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
   // 데이터 로드
   useEffect(() => {
     if (userInfo?.userId) {
       loadStats()
     }
-  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, excludeTestAccounts, userInfo?.userId])
+  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, excludeTestAccounts, cohortSeq, userInfo?.userId])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   // 날짜를 YYYY-MM-DD 형식으로 변환
   const formatDateToString = (date: Date): string => {
@@ -174,6 +203,9 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
       
       if (userName.trim()) {
         url += `&userName=${encodeURIComponent(userName.trim())}`
+      }
+      if (cohortSeq) {
+        url += `&cohortSeq=${cohortSeq}`
       }
       
       if (useCustomDate && startDate && endDate) {
@@ -416,6 +448,18 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
 
         {/* 사용자 검색 + 검색 버튼 */}
         <div className="search-group">
+          <span className="filter-label">기수:</span>
+          <select
+            className="user-search-input"
+            value={cohortSeq}
+            onChange={(e) => setCohortSeq(e.target.value ? Number(e.target.value) : '')}
+            style={{ minWidth: '120px' }}
+          >
+            <option value="">전체</option>
+            {cohorts.map((c) => (
+              <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+            ))}
+          </select>
           <span className="filter-label">사용자:</span>
           <input 
             type="text"

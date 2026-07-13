@@ -6,9 +6,20 @@ const { getConnection, sql } = require('../config/database');
 // 배치로그 목록 조회 API
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 배치로그 목록 조회 API 호출됨');
+    const { cohortSeq } = req.query;
+    console.log('📋 배치로그 목록 조회 API 호출됨, cohortSeq:', cohortSeq);
     const pool = await getConnection();
-    const result = await pool.request()
+    const request = pool.request();
+    let cohortCondition = '';
+    if (cohortSeq !== undefined && cohortSeq !== null && String(cohortSeq).trim() !== '') {
+      const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+      if (Number.isFinite(parsedCohortSeq)) {
+        cohortCondition = 'AND B.cohort_seq = @cohortSeq';
+        request.input('cohortSeq', sql.Int, parsedCohortSeq);
+      }
+    }
+
+    const result = await request
       .query(`
         SELECT 
           A.seq,
@@ -23,6 +34,8 @@ router.get('/', async (req, res) => {
         FROM tb_batch_log A       
         INNER JOIN tb_user B
                 ON A.user_id = B.user_id
+        WHERE 1=1
+        ${cohortCondition}
         ORDER BY A.start_date DESC
       `);
     

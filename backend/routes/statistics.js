@@ -6,6 +6,13 @@ const { getConnection, sql } = require('../config/database');
 /** 주문 집계: 판매자코드 길이 7~11자만 (주문관리·대시보드와 동일) */
 const SELLER_CD_LEN_FILTER = 'AND LEN(A.seller_cd) BETWEEN 7 AND 11';
 
+function buildCohortCondition(alias, cohortSeq) {
+  if (cohortSeq === undefined || cohortSeq === null || String(cohortSeq).trim() === '') return '';
+  const n = parseInt(String(cohortSeq), 10);
+  if (!Number.isFinite(n)) return '';
+  return `AND ${alias}.cohort_seq = ${n}`;
+}
+
 // 사용자별 매출 통계 조회 API
 router.get('/user-sales', async (req, res) => {
   try {
@@ -15,7 +22,8 @@ router.get('/user-sales', async (req, res) => {
       startDate,
       endDate,
       sortField = 'total_sales',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      cohortSeq
     } = req.query;
     
     const pool = await getConnection();
@@ -67,6 +75,7 @@ router.get('/user-sales', async (req, res) => {
     if (userName && userName.trim() !== '') {
       userNameCondition = `AND U.user_name LIKE N'%${userName.trim()}%'`;
     }
+    const cohortCondition = buildCohortCondition('U', cohortSeq);
     
     // 정렬 조건
     let orderByClause = '';
@@ -143,6 +152,7 @@ router.get('/user-sales', async (req, res) => {
         WHERE U.use_yn = 'Y'
         AND U.user_type != N'가구매'
         ${userNameCondition}
+        ${cohortCondition}
       )
       SELECT 
         user_id,
@@ -332,7 +342,8 @@ router.get('/daily-sales-by-user', async (req, res) => {
     const { 
       dateFilter = 'today', 
       startDate,
-      endDate
+      endDate,
+      cohortSeq
     } = req.query;
     
     const pool = await getConnection();
@@ -379,6 +390,8 @@ router.get('/daily-sales-by-user', async (req, res) => {
       }
     }
     
+    const cohortCondition = buildCohortCondition('U', cohortSeq);
+
     // 사용자별 일자별 매출 통계 쿼리
     const statsQuery = `
       SELECT 
@@ -403,6 +416,7 @@ router.get('/daily-sales-by-user', async (req, res) => {
           AND A.order_status != ''
           AND A.order_status NOT IN (N'CANCELED', N'RETURNED')
           ${dateCondition}
+          ${cohortCondition}
           ${SELLER_CD_LEN_FILTER}
         GROUP BY U.user_id, U.user_name, CAST(A.pay_date AS date)
       ) T
@@ -464,7 +478,8 @@ router.get('/upload-product', async (req, res) => {
       dateFilter = 'all',
       userName = '',
       startDate,
-      endDate
+      endDate,
+      cohortSeq
     } = req.query;
 
     const pool = await getConnection();
@@ -480,6 +495,7 @@ router.get('/upload-product', async (req, res) => {
     if (userName && String(userName).trim() !== '') {
       userNameCondition = `AND b.user_name LIKE N'%${String(userName).trim().replace(/'/g, "''")}%'`;
     }
+    const cohortCondition = buildCohortCondition('b', cohortSeq);
 
     // 전체: 기간 제한·get_date NULL 제외 없음. 그 외: get_date 있어야 날짜 조건이 의미 있음
     const getDateNotNull = dateFilter === 'all' ? '' : 'AND a.get_date IS NOT NULL';
@@ -497,6 +513,7 @@ router.get('/upload-product', async (req, res) => {
         ${getDateNotNull}
         ${dateCond}
         ${userNameCondition}
+        ${cohortCondition}
       GROUP BY a.user_id, b.user_name, a.biz_idx
       ORDER BY b.user_name, a.user_id, a.biz_idx
     `;

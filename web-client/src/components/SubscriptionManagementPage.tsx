@@ -5,6 +5,12 @@ import './SubscriptionManagementPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/subscription-management`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface SubscriptionPayment {
   seq: number
@@ -69,15 +75,39 @@ function SubscriptionManagementPage() {
   const [endDateInput, setEndDateInput] = useState('')
   const [startDateFilter, setStartDateFilter] = useState('')
   const [endDateFilter, setEndDateFilter] = useState('')
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
+  const [cohortFilter, setCohortFilter] = useState<number | ''>('')
 
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
   useEffect(() => {
+    loadCohorts()
+  }, [])
+
+  useEffect(() => {
     loadPayments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userFilter, startDateFilter, endDateFilter])
+  }, [userFilter, startDateFilter, endDateFilter, cohortFilter])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   const loadPayments = async () => {
     try {
@@ -86,6 +116,7 @@ function SubscriptionManagementPage() {
       if (userFilter) params.append('userKeyword', userFilter)
       if (startDateFilter) params.append('startDate', startDateFilter)
       if (endDateFilter) params.append('endDate', endDateFilter)
+      if (cohortFilter) params.append('cohortSeq', String(cohortFilter))
       const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL
 
       const response = await fetch(url)
@@ -110,6 +141,7 @@ function SubscriptionManagementPage() {
     setUserFilter(userInput.trim())
     setStartDateFilter(startDateInput)
     setEndDateFilter(endDateInput)
+    setCohortFilter(cohortSeq)
     setCurrentPage(1)
   }
 
@@ -120,6 +152,8 @@ function SubscriptionManagementPage() {
     setUserFilter('')
     setStartDateFilter('')
     setEndDateFilter('')
+    setCohortSeq('')
+    setCohortFilter('')
     setCurrentPage(1)
   }
 
@@ -275,6 +309,17 @@ function SubscriptionManagementPage() {
         <div className="table-header">
           <h3>구독결제 목록 ({payments.length}건)</h3>
           <div className="filter-section">
+            <label>기수:</label>
+            <select
+              className="sub-date-input"
+              value={cohortSeq}
+              onChange={(e) => setCohortSeq(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">전체</option>
+              {cohorts.map((c) => (
+                <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+              ))}
+            </select>
             <label>사용자:</label>
             <input
               type="text"

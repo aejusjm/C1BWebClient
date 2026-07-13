@@ -3,20 +3,22 @@ export const ADMIN_MENUS = [
   // 관리자메뉴
   'standard-info',
   'user-management',
+  'cohort-management',
   'notice-management',
   'detail-page-management',
   'deleted-products',
   'batch-log',
   'server-management',
   'banned-words',
-  // 관리자통계관리
+  // 통계통합관리
   'user-sales-stats',
   'daily-sales-stats',
   'mobile-sales-stats',
   'upload-product-stats',
-  // 결제관리
+  // 구독 및 결제관리
   'subscription-management',
   'signup-payment-management',
+  'subscription-settlement',
   'admin-direct-payment',
   // 가구매관리
   'fake-purchase-user',

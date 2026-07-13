@@ -24,8 +24,10 @@ import SubscriptionPlanPage from './components/SubscriptionPlanPage'
 import SubscriptionManagementPage from './components/SubscriptionManagementPage'
 import SignupPaymentManagementPage from './components/SignupPaymentManagementPage'
 import AdminDirectPaymentPage from './components/AdminDirectPaymentPage'
+import SubscriptionSettlementPage from './components/SubscriptionSettlementPage'
 import SignupPaymentPage from './components/SignupPaymentPage'
 import ServerManagementPage from './components/ServerManagementPage'
+import CohortManagementPage from './components/CohortManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
 import BatchLogManagementPage from './components/BatchLogManagementPage'
 import FakePurchaseUserPage from './components/FakePurchaseUserPage'
@@ -140,9 +142,11 @@ function AuthenticatedApp({
 
             {renderAdminPage('standard-info', <StandardInfoPage />)}
             {renderAdminPage('user-management', <UserManagementPage onNavigate={handleMenuChange} />)}
+            {renderAdminPage('cohort-management', <CohortManagementPage />)}
             {renderAdminPage('subscription-management', <SubscriptionManagementPage />)}
             {renderAdminPage('signup-payment-management', <SignupPaymentManagementPage />)}
             {renderAdminPage('admin-direct-payment', <AdminDirectPaymentPage />)}
+            {renderAdminPage('subscription-settlement', <SubscriptionSettlementPage />)}
             {renderAdminPage('notice-management', <NoticeManagementPage />)}
             {renderAdminPage('deleted-products', <DeleteProductManagementPage />)}
             {renderAdminPage('detail-page-management', <DetailPageManagement />)}

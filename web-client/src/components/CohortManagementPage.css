@@ -1,0 +1,278 @@
+/* 기수관리 페이지 */
+.cohort-management-page {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+.cohort-page-header {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cohort-management-page .page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.add-cohort-btn {
+  padding: 10px 20px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-cohort-btn:hover {
+  background: #1565c0;
+}
+
+.cohort-content {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cohort-grid-section {
+  overflow-x: auto;
+}
+
+.cohort-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cohort-grid thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.cohort-grid th {
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cohort-grid tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background 0.2s;
+}
+
+.cohort-grid tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.cohort-grid td {
+  padding: 12px 8px;
+  color: #333;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cohort-grid .amount-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cohort-management-page .grid-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cohort-management-page .edit-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.cohort-management-page .edit-btn:hover {
+  background: #45a049;
+}
+
+.cohort-management-page .delete-btn {
+  background: #f44336;
+  color: white;
+}
+
+.cohort-management-page .delete-btn:hover {
+  background: #da190b;
+}
+
+.cohort-management-page .no-data-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 15px;
+}
+
+.cohort-management-page .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cohort-management-page .modal-content.cohort-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 720px;
+  width: 92%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.cohort-management-page .modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: #868e96;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.cohort-management-page .modal-close-btn:hover {
+  background: #f1f3f5;
+  color: #495057;
+}
+
+.cohort-management-page .modal-header {
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+.cohort-management-page .modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.cohort-management-page .modal-body {
+  padding: 10px 0;
+}
+
+.cohort-management-page .form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.cohort-management-page .form-group {
+  margin-bottom: 18px;
+}
+
+.cohort-management-page .form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+}
+
+.cohort-management-page .required {
+  color: #f44336;
+}
+
+.cohort-management-page .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #495057;
+  box-sizing: border-box;
+}
+
+.cohort-management-page .form-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.cohort-management-page .modal-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.cohort-management-page .modal-cancel-btn,
+.cohort-management-page .modal-save-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cohort-management-page .modal-cancel-btn {
+  background: #868e96;
+  color: white;
+}
+
+.cohort-management-page .modal-save-btn {
+  background: #1976d2;
+  color: white;
+}
+
+.cohort-management-page .modal-save-btn:hover {
+  background: #1565c0;
+}
+
+@media (max-width: 768px) {
+  .cohort-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .cohort-management-page .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .cohort-management-page .page-title {
+    font-size: 24px;
+  }
+}

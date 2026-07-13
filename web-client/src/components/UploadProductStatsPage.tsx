@@ -10,9 +10,15 @@ import './UploadProductStatsPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/stats`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
 
 /** 테스트계정 제외 시 제외할 user_id (사용자별 매출과 동일) */
 const EXCLUDED_TEST_USER_IDS = new Set(['user1', 'user2', 'user3', 'ybin583', 'admin', 'payuser'])
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface FlatRow {
   user_id: string
@@ -59,9 +65,32 @@ function UploadProductStatsPage() {
   const [rawRows, setRawRows] = useState<FlatRow[]>([])
   const [loading, setLoading] = useState(false)
   const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
 
   const [sortField, setSortField] = useState('user_name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   const formatDateToString = (date: Date): string => {
     const y = date.getFullYear()
@@ -115,6 +144,9 @@ function UploadProductStatsPage() {
       if (userName.trim()) {
         url += `&userName=${encodeURIComponent(userName.trim())}`
       }
+      if (cohortSeq) {
+        url += `&cohortSeq=${cohortSeq}`
+      }
       if (dateFilter !== 'all' && useCustomDate && startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`
       }
@@ -141,7 +173,7 @@ function UploadProductStatsPage() {
     if (userInfo?.userId) {
       loadStats()
     }
-  }, [dateFilter, useCustomDate, startDate, endDate, userInfo?.userId])
+  }, [dateFilter, useCustomDate, startDate, endDate, cohortSeq, userInfo?.userId])
 
   const { storeKeys, rows } = useMemo(() => {
     const inputRows = excludeTestAccounts
@@ -338,6 +370,18 @@ function UploadProductStatsPage() {
         <div className="filter-divider" />
 
         <div className="search-group">
+          <span className="filter-label">기수:</span>
+          <select
+            className="user-search-input"
+            value={cohortSeq}
+            onChange={e => setCohortSeq(e.target.value ? Number(e.target.value) : '')}
+            style={{ minWidth: '120px' }}
+          >
+            <option value="">전체</option>
+            {cohorts.map((c) => (
+              <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+            ))}
+          </select>
           <span className="filter-label">사용자:</span>
           <input
             type="text"

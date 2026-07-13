@@ -5,6 +5,12 @@ import './BatchLogManagementPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/batch-logs`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface BatchLog {
   seq: number
@@ -22,22 +28,48 @@ function BatchLogManagementPage() {
   const { showAlert } = useAlert()
   const [logs, setLogs] = useState<BatchLog[]>([])
   const [loading, setLoading] = useState(false)
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
   // 컴포넌트 마운트 시 목록 조회
   useEffect(() => {
     loadLogs()
-  }, [])
+  }, [cohortSeq])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   // 배치로그 목록 조회
   const loadLogs = async () => {
     try {
       setLoading(true)
-      console.log('📋 배치로그 목록 조회 시작, API URL:', API_URL)
-      const response = await fetch(API_URL)
+      const params = new URLSearchParams()
+      if (cohortSeq) params.append('cohortSeq', String(cohortSeq))
+      const url = params.toString() ? `${API_URL}?${params}` : API_URL
+      console.log('📋 배치로그 목록 조회 시작, API URL:', url)
+      const response = await fetch(url)
       
       console.log('📋 응답 상태:', response.status, response.statusText)
       
@@ -137,6 +169,21 @@ function BatchLogManagementPage() {
       <div className="batch-log-table-container">
         <div className="table-header">
           <h3>배치 로그 목록 ({logs.length}개)</h3>
+          <div className="filter-section">
+            <label>기수:</label>
+            <select
+              value={cohortSeq}
+              onChange={(e) => {
+                setCohortSeq(e.target.value ? Number(e.target.value) : '')
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">전체</option>
+              {cohorts.map((c) => (
+                <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+              ))}
+            </select>
+          </div>
           <div className="items-per-page">
             <label>페이지당 항목:</label>
             <select 

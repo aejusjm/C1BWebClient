@@ -5,6 +5,12 @@ import './DeleteProductManagementPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/delete-products`
+const COHORT_API_URL = `${API_BASE}/api/cohorts`
+
+interface CohortOption {
+  seq: number
+  cohort_name: string
+}
 
 interface DeleteProduct {
   seq: number
@@ -49,6 +55,8 @@ function DeleteProductManagementPage() {
   const [productNameFilter, setProductNameFilter] = useState('')
   const [userInput, setUserInput] = useState('')
   const [userFilter, setUserFilter] = useState('')
+  const [cohorts, setCohorts] = useState<CohortOption[]>([])
+  const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -57,10 +65,31 @@ function DeleteProductManagementPage() {
   // 이미지 확대 상태
   const [zoomImage, setZoomImage] = useState<string | null>(null)
 
+  useEffect(() => {
+    loadCohorts()
+  }, [])
+
   // 컴포넌트 마운트 시 목록 조회
   useEffect(() => {
     loadProducts()
-  }, [delTypeFilter, productNameFilter, userFilter])
+  }, [delTypeFilter, productNameFilter, userFilter, cohortSeq])
+
+  const loadCohorts = async () => {
+    try {
+      const response = await fetch(COHORT_API_URL)
+      const result = await response.json()
+      if (result.success) {
+        setCohorts(
+          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+            seq: row.seq,
+            cohort_name: row.cohort_name
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('기수 목록 조회 오류:', error)
+    }
+  }
 
   // 삭제상품 목록 조회
   const loadProducts = async () => {
@@ -75,6 +104,9 @@ function DeleteProductManagementPage() {
       }
       if (userFilter) {
         params.append('userKeyword', userFilter)
+      }
+      if (cohortSeq) {
+        params.append('cohortSeq', String(cohortSeq))
       }
       const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL
       console.log('🗑️ 삭제상품 목록 조회 시작, API URL:', url)
@@ -294,6 +326,19 @@ function DeleteProductManagementPage() {
         <div className="table-header">
           <h3>삭제 요청 목록 ({products.length}개)</h3>
           <div className="filter-section">
+            <label>기수:</label>
+            <select
+              value={cohortSeq}
+              onChange={(e) => {
+                setCohortSeq(e.target.value ? Number(e.target.value) : '')
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">전체</option>
+              {cohorts.map((c) => (
+                <option key={c.seq} value={c.seq}>{c.cohort_name}</option>
+              ))}
+            </select>
             <label>삭제유형:</label>
             <select 
               value={delTypeFilter}

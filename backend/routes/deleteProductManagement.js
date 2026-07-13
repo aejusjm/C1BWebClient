@@ -6,9 +6,9 @@ const { getConnection, sql } = require('../config/database');
 // 삭제상품 목록 조회 API
 router.get('/', async (req, res) => {
   try {
-    const { delType, productName, userKeyword } = req.query;
+    const { delType, productName, userKeyword, cohortSeq } = req.query;
     
-    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType, 'productName:', productName, 'userKeyword:', userKeyword);
+    console.log('🗑️ 삭제상품 목록 조회 API 호출됨, delType:', delType, 'productName:', productName, 'userKeyword:', userKeyword, 'cohortSeq:', cohortSeq);
     
     let delTypeCondition = '';
     if (delType) {
@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
 
     let productNameCondition = '';
     let userCondition = '';
+    let cohortCondition = '';
     const pool = await getConnection();
     const request = pool.request();
     if (productName && String(productName).trim()) {
@@ -26,6 +27,13 @@ router.get('/', async (req, res) => {
     if (userKeyword && String(userKeyword).trim()) {
       userCondition = 'AND (A.user_id LIKE @userKeyword OR D.user_name LIKE @userKeyword)';
       request.input('userKeyword', sql.NVarChar, `%${String(userKeyword).trim()}%`);
+    }
+    if (cohortSeq !== undefined && cohortSeq !== null && String(cohortSeq).trim() !== '') {
+      const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+      if (Number.isFinite(parsedCohortSeq)) {
+        cohortCondition = 'AND D.cohort_seq = @cohortSeq';
+        request.input('cohortSeq', sql.Int, parsedCohortSeq);
+      }
     }
     
     const result = await request
@@ -63,6 +71,7 @@ router.get('/', async (req, res) => {
         ${delTypeCondition}
         ${productNameCondition}
         ${userCondition}
+        ${cohortCondition}
         ORDER BY A.seq DESC
       `);
     
