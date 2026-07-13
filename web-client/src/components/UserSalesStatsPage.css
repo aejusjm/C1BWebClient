@@ -337,6 +337,13 @@
   font-weight: 700;
 }
 
+/* 실구독료 헤더 */
+.stats-table th.header-net-subscription {
+  background: #fce4ec;
+  color: #c2185b;
+  font-weight: 700;
+}
+
 /* 정렬 가능한 헤더 */
 .stats-table th.sortable {
   cursor: pointer;
@@ -412,6 +419,13 @@
 .stats-table td.cell-subscription {
   background: #e0f7fa !important;
   color: #00796b !important;
+  font-weight: 700 !important;
+}
+
+/* 실구독료 셀 */
+.stats-table td.cell-net-subscription {
+  background: #fce4ec !important;
+  color: #c2185b !important;
   font-weight: 700 !important;
 }
 

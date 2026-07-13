@@ -233,6 +233,11 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
     return Math.floor(amount / 10000).toLocaleString()
   }
 
+  // 구독료에서 부가세 10% 제외 (공급가액)
+  const getNetSubscriptionFee = (fee: number) => {
+    return Math.round(Number(fee || 0) / 1.1)
+  }
+
   // 합계 계산
   const calculateTotals = () => {
     return stats.reduce((acc, stat) => ({
@@ -245,7 +250,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
       total_order_count: acc.total_order_count + Number(stat.total_order_count || 0),
       total_sales: acc.total_sales + Number(stat.total_sales || 0),
       total_profit: acc.total_profit + Number(stat.total_profit || 0),
-      subscription_fee: acc.subscription_fee + Number(stat.subscription_fee || 0)
+      subscription_fee: acc.subscription_fee + Number(stat.subscription_fee || 0),
+      net_subscription_fee: acc.net_subscription_fee + getNetSubscriptionFee(stat.subscription_fee)
     }), {
       ss_store_count: 0,
       ss_order_count: 0,
@@ -256,7 +262,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
       total_order_count: 0,
       total_sales: 0,
       total_profit: 0,
-      subscription_fee: 0
+      subscription_fee: 0,
+      net_subscription_fee: 0
     })
   }
 
@@ -472,6 +479,12 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                 >
                   구독료
                 </th>
+                <th 
+                  rowSpan={2}
+                  className="header-total header-net-subscription"
+                >
+                  실구독료
+                </th>
               </tr>
               <tr className="header-row-2">
                 <th className="header-smartstore">스스</th>
@@ -541,6 +554,11 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                   >
                     {formatAmount(stat.subscription_fee)} 만원
                   </td>
+                  <td 
+                    className={`right highlight cell-net-subscription ${stat.total_order_count === 0 ? 'zero-value' : ''}`}
+                  >
+                    {formatAmount(getNetSubscriptionFee(stat.subscription_fee))} 만원
+                  </td>
                 </tr>
               ))}
               
@@ -560,6 +578,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
                     <td className="right highlight">{formatAmount(totals.total_sales)} 만원</td>
                     <td className="right highlight cell-profit">{formatAmount(totals.total_profit)} 만원</td>
                     <td className="right highlight cell-subscription">{formatAmount(totals.subscription_fee)} 만원</td>
+                    <td className="right highlight cell-net-subscription">{formatAmount(totals.net_subscription_fee)} 만원</td>
                   </tr>
                 )
               })()}
