@@ -157,14 +157,31 @@
   width: 100%;
 }
 
-/* 설정 메뉴 (클릭 불가) */
+/* 접이식 상위 메뉴 */
 .menu-parent {
   cursor: default;
 }
 
-.menu-parent .menu-title {
-  cursor: default;
-  pointer-events: none;
+.menu-parent .menu-title-toggle {
+  cursor: pointer;
+  pointer-events: auto;
+  justify-content: flex-start;
+  user-select: none;
+}
+
+.menu-parent .menu-title-toggle:hover {
+  color: #1976d2;
+}
+
+.menu-chevron {
+  margin-left: auto;
+  font-size: 11px;
+  color: #888;
+  padding-left: 8px;
+}
+
+.menu-parent.collapsed {
+  padding-bottom: 12px;
 }
 
 .submenu li {

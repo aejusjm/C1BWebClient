@@ -344,6 +344,13 @@
   font-weight: 700;
 }
 
+/* 실수익 헤더 */
+.stats-table th.header-net-profit {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: 700;
+}
+
 /* 정렬 가능한 헤더 */
 .stats-table th.sortable {
   cursor: pointer;
@@ -426,6 +433,13 @@
 .stats-table td.cell-net-subscription {
   background: #fce4ec !important;
   color: #c2185b !important;
+  font-weight: 700 !important;
+}
+
+/* 실수익 셀 */
+.stats-table td.cell-net-profit {
+  background: #e8f5e9 !important;
+  color: #2e7d32 !important;
   font-weight: 700 !important;
 }
 

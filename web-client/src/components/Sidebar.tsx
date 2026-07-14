@@ -1,4 +1,5 @@
 // 좌측 사이드바 컴포넌트 - 로고, 사용자 정보, 메뉴 네비게이션
+import { useEffect, useState } from 'react'
 import './Sidebar.css'
 import { useAlert } from '../contexts/AlertContext'
 import { isAdminMenu, isAdminUser } from '../constants/adminMenus'
@@ -17,11 +18,71 @@ interface SidebarProps {
   userInfo: UserInfo
 }
 
+type CollapsibleMenuKey = 'admin' | 'stats' | 'payment' | 'fake' | 'settings'
+
+const MENU_GROUP_ITEMS: Record<CollapsibleMenuKey, string[]> = {
+  admin: [
+    'standard-info',
+    'user-management',
+    'cohort-management',
+    'notice-management',
+    'detail-page-management',
+    'deleted-products',
+    'batch-log',
+    'server-management'
+  ],
+  stats: [
+    'user-sales-stats',
+    'daily-sales-stats',
+    'mobile-sales-stats',
+    'upload-product-stats'
+  ],
+  payment: [
+    'subscription-management',
+    'signup-payment-management',
+    'subscription-settlement',
+    'admin-direct-payment'
+  ],
+  fake: [
+    'fake-purchase-user',
+    'fake-purchase-info',
+    'fake-purchase-product',
+    'fake-purchase-schedule'
+  ],
+  settings: ['account', 'basic', 'market']
+}
+
+function getMenuGroup(menu: string): CollapsibleMenuKey | null {
+  for (const [key, items] of Object.entries(MENU_GROUP_ITEMS) as [CollapsibleMenuKey, string[]][]) {
+    if (items.includes(menu)) return key
+  }
+  return null
+}
+
 function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps) {
   const { showAlert } = useAlert()
   
   // 관리자 여부 확인
   const isAdmin = isAdminUser(userInfo.userType)
+
+  const [expandedMenus, setExpandedMenus] = useState<Record<CollapsibleMenuKey, boolean>>({
+    admin: true,
+    stats: true,
+    payment: true,
+    fake: true,
+    settings: true
+  })
+
+  // 활성 메뉴가 속한 그룹은 자동으로 펼침
+  useEffect(() => {
+    const group = getMenuGroup(activeMenu)
+    if (!group) return
+    setExpandedMenus((prev) => (prev[group] ? prev : { ...prev, [group]: true }))
+  }, [activeMenu])
+
+  const toggleMenu = (key: CollapsibleMenuKey) => {
+    setExpandedMenus((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const handleMenuClick = (menu: string) => {
     if (isAdminMenu(menu) && !isAdmin) {
@@ -176,10 +237,15 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
           )}
           {/* 설정 메뉴 - 관리자에게는 숨김 */}
           {!isAdmin && (
-            <li className="menu-parent">
-              <div className="menu-title">
+            <li className={`menu-parent ${expandedMenus.settings ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('settings')}
+              >
                 <span className="menu-icon">⚙️</span> 설정
+                <span className="menu-chevron">{expandedMenus.settings ? '▼' : '▶'}</span>
               </div>
+              {expandedMenus.settings && (
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'account' ? 'active' : ''}
@@ -200,14 +266,20 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">🔗</span> 마켓연동
                 </li>
               </ul>
+              )}
             </li>
           )}
           {/* 관리자 메뉴 - 관리자만 표시 */}
           {isAdmin && (
-            <li className="menu-parent">
-              <div className="menu-title">
+            <li className={`menu-parent ${expandedMenus.admin ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('admin')}
+              >
                 <span className="menu-icon">👨‍💼</span> 관리자메뉴
+                <span className="menu-chevron">{expandedMenus.admin ? '▼' : '▶'}</span>
               </div>
+              {expandedMenus.admin && (
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'standard-info' ? 'active' : ''}
@@ -258,14 +330,20 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">🖥️</span> 서버관리
                 </li>
               </ul>
+              )}
             </li>
           )}
           {/* 통계통합관리 메뉴 - 관리자만 표시 */}
           {isAdmin && (
-            <li className="menu-parent">
-              <div className="menu-title">
+            <li className={`menu-parent ${expandedMenus.stats ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('stats')}
+              >
                 <span className="menu-icon">📈</span> 통계통합관리
+                <span className="menu-chevron">{expandedMenus.stats ? '▼' : '▶'}</span>
               </div>
+              {expandedMenus.stats && (
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'user-sales-stats' ? 'active' : ''}
@@ -292,14 +370,20 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">📦</span> 상품등록 현황
                 </li>
               </ul>
+              )}
             </li>
           )}
           {/* 구독 및 결제관리 메뉴 - 관리자만 표시 */}
           {isAdmin && (
-            <li className="menu-parent">
-              <div className="menu-title">
+            <li className={`menu-parent ${expandedMenus.payment ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('payment')}
+              >
                 <span className="menu-icon">💳</span> 구독 및 결제관리
+                <span className="menu-chevron">{expandedMenus.payment ? '▼' : '▶'}</span>
               </div>
+              {expandedMenus.payment && (
               <ul className="submenu">
                 <li
                   className={activeMenu === 'subscription-management' ? 'active' : ''}
@@ -331,14 +415,20 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">🖊️</span> 관리자 직접 결제
                 </li>
               </ul>
+              )}
             </li>
           )}
           {/* 가구매관리 메뉴 - 관리자만 표시 */}
           {isAdmin && (
-            <li className="menu-parent">
-              <div className="menu-title">
+            <li className={`menu-parent ${expandedMenus.fake ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('fake')}
+              >
                 <span className="menu-icon">🛍️</span> 가구매관리
+                <span className="menu-chevron">{expandedMenus.fake ? '▼' : '▶'}</span>
               </div>
+              {expandedMenus.fake && (
               <ul className="submenu">
                 <li 
                   className={activeMenu === 'fake-purchase-user' ? 'active' : ''}
@@ -365,6 +455,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">📅</span> 가구매 일정관리
                 </li>
               </ul>
+              )}
             </li>
           )}
         </ul>
