@@ -183,15 +183,23 @@ function SignupPaymentManagementPage() {
 
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return '-'
-    const dateStr = dateString.replace('Z', '')
-    const date = new Date(dateStr)
+    const raw = String(dateString).trim()
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/)
+    if (match) {
+      const [, y, m, d, h, mi] = match
+      return `${y}-${m}-${d} ${h}:${mi}`
+    }
+    const date = new Date(raw)
     if (Number.isNaN(date.getTime())) return '-'
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}`
+    return date.toLocaleString('sv-SE', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).replace('T', ' ').slice(0, 16)
   }
 
   const formatAmount = (amount: number) => {

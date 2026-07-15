@@ -29,6 +29,8 @@ interface SubscriptionPayment {
   refund_amount: number
   refund_reason: string | null
   refunded_at: string | null
+  card_name: string | null
+  card_number: string | null
 }
 
 /** 플랜 코드 → 화면 라벨 */
@@ -229,18 +231,27 @@ function SubscriptionManagementPage() {
     }
   }
 
-  // 날짜+시간 포맷 (YYYY-MM-DD HH:mm)
+  // 날짜+시간 포맷 (한국시간 기준, YYYY-MM-DD HH:mm)
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return '-'
-    const dateStr = dateString.replace('Z', '')
-    const date = new Date(dateStr)
+    // SQL DATETIME(타임존 없음)이 Z가 붙어 오면 UTC로 오인되지 않도록 제거 후 파싱
+    const raw = String(dateString).trim()
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/)
+    if (match) {
+      const [, y, m, d, h, mi] = match
+      return `${y}-${m}-${d} ${h}:${mi}`
+    }
+    const date = new Date(raw)
     if (Number.isNaN(date.getTime())) return '-'
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}`
+    return date.toLocaleString('sv-SE', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).replace('T', ' ').slice(0, 16)
   }
 
   // 날짜만 포맷 (YYYY-MM-DD)
@@ -374,6 +385,7 @@ function SubscriptionManagementPage() {
                 <th>환불금액</th>
                 <th>미환불금액</th>
                 <th>결제상태</th>
+                <th>카드명</th>
                 <th>결제일자</th>
                 <th>다음결제일</th>
                 <th>이용만료일</th>
@@ -384,7 +396,7 @@ function SubscriptionManagementPage() {
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="no-data">
+                  <td colSpan={13} className="no-data">
                     {loading ? '로딩 중...' : '구독결제 내역이 없습니다.'}
                   </td>
                 </tr>
@@ -410,6 +422,9 @@ function SubscriptionManagementPage() {
                         <span className={`sub-status-badge ${statusBadge.className}`}>
                           {statusBadge.label}
                         </span>
+                      </td>
+                      <td className="card-cell" title={payment.card_number || undefined}>
+                        {payment.card_name || '-'}
                       </td>
                       <td>{formatDateTime(payment.paid_at)}</td>
                       <td>{formatDate(payment.next_pay_date)}</td>

@@ -1,5 +1,5 @@
 // Alert 컨텍스트 - 전역 알림/확인 모달 관리
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import AlertModal from '../components/AlertModal'
 
 interface AlertContextType {
@@ -14,59 +14,54 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const [modalType, setModalType] = useState<'alert' | 'confirm'>('alert')
   const [title, setTitle] = useState<string | undefined>()
   const [message, setMessage] = useState('')
-  const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null)
+  const resolveRef = useRef<((value: boolean) => void) | null>(null)
 
   // Alert 표시 (Promise 기반)
-  const showAlert = (msg: string, ttl?: string): Promise<void> => {
+  const showAlert = useCallback((msg: string, ttl?: string): Promise<void> => {
     return new Promise<void>((resolve) => {
       setModalType('alert')
       setTitle(ttl)
       setMessage(msg)
       setIsOpen(true)
-      setResolvePromise(() => () => {
+      resolveRef.current = () => {
         resolve()
-        return true
-      })
+      }
     })
-  }
+  }, [])
 
   // Confirm 표시 (Promise 기반)
-  const showConfirm = (msg: string, ttl?: string): Promise<boolean> => {
+  const showConfirm = useCallback((msg: string, ttl?: string): Promise<boolean> => {
     return new Promise<boolean>((resolve) => {
       setModalType('confirm')
       setTitle(ttl)
       setMessage(msg)
       setIsOpen(true)
-      setResolvePromise(() => (value: boolean) => {
+      resolveRef.current = (value: boolean) => {
         resolve(value)
-        return value
-      })
+      }
     })
-  }
+  }, [])
 
   // 확인 버튼 클릭
-  const handleConfirm = () => {
-    console.log('handleConfirm 호출됨')
+  const handleConfirm = useCallback(() => {
     setIsOpen(false)
-    if (resolvePromise) {
-      console.log('resolvePromise 실행')
-      resolvePromise(true)
-      setResolvePromise(null)
-    }
-  }
+    const resolve = resolveRef.current
+    resolveRef.current = null
+    resolve?.(true)
+  }, [])
 
   // 취소 버튼 클릭
-  const handleCancel = () => {
-    console.log('handleCancel 호출됨')
+  const handleCancel = useCallback(() => {
     setIsOpen(false)
-    if (resolvePromise) {
-      resolvePromise(false)
-      setResolvePromise(null)
-    }
-  }
+    const resolve = resolveRef.current
+    resolveRef.current = null
+    resolve?.(false)
+  }, [])
+
+  const value = useMemo(() => ({ showAlert, showConfirm }), [showAlert, showConfirm])
 
   return (
-    <AlertContext.Provider value={{ showAlert, showConfirm }}>
+    <AlertContext.Provider value={value}>
       {children}
       <AlertModal
         isOpen={isOpen}

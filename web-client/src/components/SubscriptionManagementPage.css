@@ -195,11 +195,12 @@
 .subscription-table th:nth-child(5) { width: 110px; }  /* 환불금액 */
 .subscription-table th:nth-child(6) { width: 110px; }  /* 미환불금액 */
 .subscription-table th:nth-child(7) { width: 90px; }   /* 결제상태 */
-.subscription-table th:nth-child(8) { width: 140px; }  /* 결제일자 */
-.subscription-table th:nth-child(9) { width: 105px; }  /* 다음결제일 */
-.subscription-table th:nth-child(10) { width: 105px; } /* 이용만료일 */
-.subscription-table th:nth-child(11) { width: 200px; } /* 주문번호 */
-.subscription-table th:nth-child(12) { width: 85px; }  /* 환불 */
+.subscription-table th:nth-child(8) { width: 110px; }  /* 카드명 */
+.subscription-table th:nth-child(9) { width: 140px; }  /* 결제일자 */
+.subscription-table th:nth-child(10) { width: 105px; } /* 다음결제일 */
+.subscription-table th:nth-child(11) { width: 105px; } /* 이용만료일 */
+.subscription-table th:nth-child(12) { width: 200px; } /* 주문번호 */
+.subscription-table th:nth-child(13) { width: 85px; }  /* 환불 */
 
 .subscription-table td {
   padding: 12px 10px;
@@ -236,6 +237,12 @@
   font-size: 11px;
   color: #999;
   font-weight: 400;
+}
+
+.subscription-table .card-cell {
+  font-size: 12px;
+  color: #444;
+  white-space: nowrap;
 }
 
 /* 금액 셀 */

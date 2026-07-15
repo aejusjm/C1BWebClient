@@ -52,6 +52,8 @@ router.get('/', async (req, res) => {
         p.refund_amount,
         p.refund_reason,
         p.refunded_at,
+        p.card_name,
+        p.card_number,
         s.next_pay_date,
         s.status AS sub_status,
         u.end_date

@@ -1,5 +1,6 @@
 // 관리자 직접 결제 페이지
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { loadTossPayments } from '@tosspayments/payment-sdk'
 import { useAlert } from '../contexts/AlertContext'
 import './AdminDirectPaymentPage.css'
@@ -8,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/admin-direct-payment`
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || ''
 const DRAFT_KEY = 'adminDirectPaymentDraft'
+const HANDLED_KEY_PREFIX = 'adminDirectPaymentHandled:'
 
 type PayType = 'SUBSCRIPTION' | 'GENERAL'
 
@@ -16,8 +18,36 @@ interface UserOption {
   user_name: string | null
 }
 
+interface PaymentDraft {
+  userId: string
+  orderName: string
+  amount: number
+  payType: PayType
+}
+
+function takeDraft(): PaymentDraft | null {
+  try {
+    const draftRaw = sessionStorage.getItem(DRAFT_KEY)
+    if (!draftRaw) return null
+    sessionStorage.removeItem(DRAFT_KEY)
+    return JSON.parse(draftRaw) as PaymentDraft
+  } catch {
+    sessionStorage.removeItem(DRAFT_KEY)
+    return null
+  }
+}
+
+function markHandled(lockId: string): boolean {
+  const key = `${HANDLED_KEY_PREFIX}${lockId}`
+  if (sessionStorage.getItem(key)) return false
+  sessionStorage.setItem(key, '1')
+  return true
+}
+
 function AdminDirectPaymentPage() {
   const { showAlert } = useAlert()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [users, setUsers] = useState<UserOption[]>([])
   const [userId, setUserId] = useState('')
   const [orderName, setOrderName] = useState('')
@@ -26,39 +56,56 @@ function AdminDirectPaymentPage() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [processing, setProcessing] = useState(false)
 
+  const resetForm = () => {
+    setUserId('')
+    setOrderName('')
+    setPayType('SUBSCRIPTION')
+    setAmount('')
+  }
+
   useEffect(() => {
     loadUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 토스 리다이렉트 결과 처리
+  // React Router location.search 를 navigate 로 정리해야 App 이 메뉴를 다시 고정하지 않음
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(location.search)
     const adminPay = params.get('adminPay')
     if (!adminPay) return
 
     const clearQuery = () => {
-      window.history.replaceState({}, '', window.location.pathname)
+      navigate({ pathname: location.pathname || '/', search: '' }, { replace: true })
     }
 
     if (adminPay === 'fail') {
       const message = params.get('message') || '결제가 취소되었거나 실패했습니다.'
+      const lockId = `fail:${params.get('code') || message}`
+      if (!markHandled(lockId)) {
+        clearQuery()
+        return
+      }
       clearQuery()
       sessionStorage.removeItem(DRAFT_KEY)
-      showAlert(`결제 실패: ${message}`)
+      void showAlert(`결제 실패: ${message}`)
       return
     }
 
     if (adminPay === 'sub-success') {
       const authKey = params.get('authKey')
       const customerKey = params.get('customerKey')
+      const lockId = `sub:${authKey || customerKey || 'unknown'}`
+      if (!markHandled(lockId)) {
+        clearQuery()
+        return
+      }
+
+      const draft = takeDraft()
       clearQuery()
 
-      const draftRaw = sessionStorage.getItem(DRAFT_KEY)
-      const draft = draftRaw ? JSON.parse(draftRaw) : null
-      sessionStorage.removeItem(DRAFT_KEY)
-
       if (!authKey || !customerKey || !draft?.userId || !draft?.amount || !draft?.orderName) {
-        showAlert('결제 정보가 올바르지 않습니다. 다시 시도해주세요.')
+        void showAlert('결제 정보가 올바르지 않습니다. 다시 시도해주세요.')
         return
       }
 
@@ -97,14 +144,17 @@ function AdminDirectPaymentPage() {
       const paymentKey = params.get('paymentKey')
       const orderId = params.get('orderId')
       const paidAmount = params.get('amount')
+      const lockId = `gen:${paymentKey || orderId || 'unknown'}`
+      if (!markHandled(lockId)) {
+        clearQuery()
+        return
+      }
+
+      const draft = takeDraft()
       clearQuery()
 
-      const draftRaw = sessionStorage.getItem(DRAFT_KEY)
-      const draft = draftRaw ? JSON.parse(draftRaw) : null
-      sessionStorage.removeItem(DRAFT_KEY)
-
       if (!paymentKey || !orderId || !paidAmount || !draft?.userId || !draft?.orderName) {
-        showAlert('결제 정보가 올바르지 않습니다. 다시 시도해주세요.')
+        void showAlert('결제 정보가 올바르지 않습니다. 다시 시도해주세요.')
         return
       }
 
@@ -137,8 +187,7 @@ function AdminDirectPaymentPage() {
         }
       })()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.search, location.pathname, navigate, showAlert])
 
   const loadUsers = async () => {
     try {
@@ -156,13 +205,6 @@ function AdminDirectPaymentPage() {
     } finally {
       setLoadingUsers(false)
     }
-  }
-
-  const resetForm = () => {
-    setUserId('')
-    setOrderName('')
-    setPayType('SUBSCRIPTION')
-    setAmount('')
   }
 
   const handlePay = async () => {

@@ -19,6 +19,8 @@ async function createTables() {
           amount        INT           NOT NULL,
           status        NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
           next_pay_date DATE          NULL,
+          card_name     NVARCHAR(100) NULL,
+          card_number   NVARCHAR(30)  NULL,
           created_at    DATETIME      DEFAULT GETDATE(),
           updated_at    DATETIME      DEFAULT GETDATE()
         );
@@ -41,6 +43,8 @@ async function createTables() {
           amount       INT           NOT NULL,
           status       NVARCHAR(20)  NOT NULL,
           paid_at      DATETIME      NULL,
+          card_name    NVARCHAR(100) NULL,
+          card_number  NVARCHAR(30)  NULL,
           raw_response NVARCHAR(MAX) NULL,
           created_at   DATETIME      DEFAULT GETDATE()
         );
@@ -64,6 +68,24 @@ async function createTables() {
         ALTER TABLE tb_subscription_payment ADD refunded_at DATETIME NULL;
     `);
     console.log('✅ tb_subscription_payment 환불 컬럼 확인/추가 완료');
+
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription_payment', 'card_name') IS NULL
+        ALTER TABLE tb_subscription_payment ADD card_name NVARCHAR(100) NULL;
+    `);
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription_payment', 'card_number') IS NULL
+        ALTER TABLE tb_subscription_payment ADD card_number NVARCHAR(30) NULL;
+    `);
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription', 'card_name') IS NULL
+        ALTER TABLE tb_subscription ADD card_name NVARCHAR(100) NULL;
+    `);
+    await pool.request().query(`
+      IF COL_LENGTH('tb_subscription', 'card_number') IS NULL
+        ALTER TABLE tb_subscription ADD card_number NVARCHAR(30) NULL;
+    `);
+    console.log('✅ 카드정보 컬럼 확인/추가 완료');
 
     console.log('🎉 구독 테이블 생성 작업 완료');
   } catch (error) {

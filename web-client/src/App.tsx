@@ -93,15 +93,17 @@ function AuthenticatedApp({
   }, [location.pathname, handleMenuChange])
 
   // 토스 구독/관리자 직접결제 리다이렉트 진입 시 해당 페이지로 이동
+  // handleMenuChange를 의존성에 넣지 않음: Alert 열림/닫힘으로 콜백 참조가 바뀌면
+  // 쿼리가 남아 있을 때 메뉴가 구독 플랜으로 다시 고정되는 문제를 피함
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('subscription')) {
-      handleMenuChange('subscription-plan')
+      setActiveMenu('subscription-plan')
     }
     if (params.get('adminPay')) {
-      handleMenuChange('admin-direct-payment')
+      setActiveMenu('admin-direct-payment')
     }
-  }, [location.search, handleMenuChange])
+  }, [location.search, setActiveMenu])
 
   const renderAdminPage = (menu: string, page: React.ReactNode) => {
     if (activeMenu !== menu) return null

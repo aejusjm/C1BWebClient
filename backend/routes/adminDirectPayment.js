@@ -3,7 +3,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const { getConnection, sql } = require('../config/database');
-const { issueBillingKey, requestBilling, confirmPayment } = require('../services/tossPayments');
+const { issueBillingKey, requestBilling, confirmPayment, toKoreaDateTimeString, extractCardInfo } = require('../services/tossPayments');
 
 function generateCustomerKey(userId) {
   const rand = crypto.randomBytes(8).toString('hex');
@@ -53,7 +53,7 @@ async function extendUserEndDate(pool, userId) {
     `);
 }
 
-async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey, amount, planType }) {
+async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey, amount, planType, cardName, cardNumber }) {
   const existing = await pool.request()
     .input('customer_key', sql.NVarChar, customerKey)
     .query(`SELECT TOP 1 seq FROM tb_subscription WHERE customer_key = @customer_key`);
@@ -64,6 +64,8 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
       .input('billing_key', sql.NVarChar, billingKey)
       .input('plan_type', sql.NVarChar, planType)
       .input('amount', sql.Int, amount)
+      .input('card_name', sql.NVarChar, cardName || null)
+      .input('card_number', sql.NVarChar, cardNumber || null)
       .query(`
         UPDATE tb_subscription
         SET billing_key = @billing_key,
@@ -71,6 +73,8 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
             amount = @amount,
             status = 'ACTIVE',
             next_pay_date = DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())),
+            card_name = COALESCE(@card_name, card_name),
+            card_number = COALESCE(@card_number, card_number),
             updated_at = GETDATE()
         WHERE customer_key = @customer_key
       `);
@@ -83,13 +87,15 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
     .input('billing_key', sql.NVarChar, billingKey)
     .input('plan_type', sql.NVarChar, planType)
     .input('amount', sql.Int, amount)
+    .input('card_name', sql.NVarChar, cardName || null)
+    .input('card_number', sql.NVarChar, cardNumber || null)
     .query(`
-      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date)
-      VALUES (@user_id, @customer_key, @billing_key, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())))
+      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date, card_name, card_number)
+      VALUES (@user_id, @customer_key, @billing_key, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())), @card_name, @card_number)
     `);
 }
 
-async function insertPayment(pool, { userId, orderId, paymentKey, planType, amount, status, paidAt, rawResponse }) {
+async function insertPayment(pool, { userId, orderId, paymentKey, planType, amount, status, paidAt, rawResponse, cardName, cardNumber }) {
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
     .input('order_id', sql.NVarChar, orderId)
@@ -97,13 +103,15 @@ async function insertPayment(pool, { userId, orderId, paymentKey, planType, amou
     .input('plan_type', sql.NVarChar, planType)
     .input('amount', sql.Int, amount)
     .input('status', sql.NVarChar, status || 'DONE')
-    .input('paid_at', sql.DateTime, paidAt || new Date())
+    .input('paid_at', sql.NVarChar, toKoreaDateTimeString(paidAt))
+    .input('card_name', sql.NVarChar, cardName || null)
+    .input('card_number', sql.NVarChar, cardNumber || null)
     .input('raw_response', sql.NVarChar, rawResponse || null)
     .query(`
       INSERT INTO tb_subscription_payment
-        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, raw_response)
+        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, card_name, card_number, raw_response)
       VALUES
-        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, @paid_at, @raw_response)
+        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, CONVERT(DATETIME, @paid_at, 120), @card_name, @card_number, @raw_response)
     `);
 }
 
@@ -228,6 +236,7 @@ router.post('/confirm-subscription', async (req, res) => {
     try {
       const billing = await issueBillingKey(authKey, customerKey);
       const billingKey = billing.billingKey;
+      const billingCard = extractCardInfo(billing);
 
       const payment = await requestBilling(billingKey, {
         customerKey,
@@ -235,13 +244,16 @@ router.post('/confirm-subscription', async (req, res) => {
         orderId,
         orderName: name
       });
+      const paymentCard = extractCardInfo(payment);
 
       await upsertSubscriptionRecord(pool, {
         userId,
         customerKey,
         billingKey,
         amount: payAmount,
-        planType: name
+        planType: name,
+        cardName: billingCard.cardName || paymentCard.cardName,
+        cardNumber: billingCard.cardNumber || paymentCard.cardNumber
       });
 
       await insertPayment(pool, {
@@ -252,7 +264,9 @@ router.post('/confirm-subscription', async (req, res) => {
         amount: payAmount,
         status: payment.status || 'DONE',
         paidAt: payment.approvedAt ? new Date(payment.approvedAt) : new Date(),
-        rawResponse: JSON.stringify(payment)
+        rawResponse: JSON.stringify(payment),
+        cardName: paymentCard.cardName || billingCard.cardName,
+        cardNumber: paymentCard.cardNumber || billingCard.cardNumber
       });
 
       await extendUserEndDate(pool, userId);
@@ -308,6 +322,7 @@ router.post('/confirm-general', async (req, res) => {
 
     try {
       const payment = await confirmPayment({ paymentKey, orderId, amount: payAmount });
+      const paymentCard = extractCardInfo(payment);
 
       await insertPayment(pool, {
         userId,
@@ -317,7 +332,9 @@ router.post('/confirm-general', async (req, res) => {
         amount: payAmount,
         status: payment.status || 'DONE',
         paidAt: payment.approvedAt ? new Date(payment.approvedAt) : new Date(),
-        rawResponse: JSON.stringify({ ...payment, orderName: name })
+        rawResponse: JSON.stringify({ ...payment, orderName: name }),
+        cardName: paymentCard.cardName,
+        cardNumber: paymentCard.cardNumber
       });
 
       res.json({ success: true, data: { orderId, status: payment.status || 'DONE' } });

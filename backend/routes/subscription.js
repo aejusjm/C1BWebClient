@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getConnection, sql } = require('../config/database');
-const { issueBillingKey, requestBilling, confirmPayment } = require('../services/tossPayments');
+const { issueBillingKey, requestBilling, confirmPayment, toKoreaDateTimeString, extractCardInfo } = require('../services/tossPayments');
 
 // VAT 세율 (10%)
 const VAT_RATE = 0.1;
@@ -85,6 +85,8 @@ function isValidExtendOrderId(orderId, userId) {
 
 // 1개월 연장(일회성) 결제 성공: 결제 이력 저장 + tb_user.end_date 1개월 연장
 async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
+  const { cardName, cardNumber } = extractCardInfo(payment);
+
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
     .input('order_id', sql.NVarChar, orderId)
@@ -92,13 +94,15 @@ async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
     .input('plan_type', sql.NVarChar, 'EXTEND')
     .input('amount', sql.Int, amount)
     .input('status', sql.NVarChar, payment.status || 'DONE')
-    .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
+    .input('paid_at', sql.NVarChar, toKoreaDateTimeString(payment.approvedAt))
+    .input('card_name', sql.NVarChar, cardName)
+    .input('card_number', sql.NVarChar, cardNumber)
     .input('raw_response', sql.NVarChar, JSON.stringify(payment))
     .query(`
       INSERT INTO tb_subscription_payment
-        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, raw_response)
+        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, card_name, card_number, raw_response)
       VALUES
-        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, @paid_at, @raw_response)
+        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, CONVERT(DATETIME, @paid_at, 120), @card_name, @card_number, @raw_response)
     `);
 
   await pool.request()
@@ -141,7 +145,7 @@ async function saveExtendPaymentFailure(pool, { userId, orderId, amount, error }
 }
 
 // 구독/빌링키 레코드 저장 (결제 성공 시)
-async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey, planType, amount }) {
+async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey, planType, amount, cardName, cardNumber }) {
   const existing = await pool.request()
     .input('customer_key', sql.NVarChar, customerKey)
     .query(`SELECT TOP 1 seq FROM tb_subscription WHERE customer_key = @customer_key`);
@@ -152,6 +156,8 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
       .input('billing_key', sql.NVarChar, billingKey)
       .input('plan_type', sql.NVarChar, planType)
       .input('amount', sql.Int, amount)
+      .input('card_name', sql.NVarChar, cardName || null)
+      .input('card_number', sql.NVarChar, cardNumber || null)
       .query(`
         UPDATE tb_subscription
         SET billing_key = @billing_key,
@@ -159,6 +165,8 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
             amount = @amount,
             status = 'ACTIVE',
             next_pay_date = DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())),
+            card_name = COALESCE(@card_name, card_name),
+            card_number = COALESCE(@card_number, card_number),
             updated_at = GETDATE()
         WHERE customer_key = @customer_key
       `);
@@ -171,9 +179,11 @@ async function upsertSubscriptionRecord(pool, { userId, customerKey, billingKey,
     .input('billing_key', sql.NVarChar, billingKey)
     .input('plan_type', sql.NVarChar, planType)
     .input('amount', sql.Int, amount)
+    .input('card_name', sql.NVarChar, cardName || null)
+    .input('card_number', sql.NVarChar, cardNumber || null)
     .query(`
-      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date)
-      VALUES (@user_id, @customer_key, @billing_key, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())))
+      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date, card_name, card_number)
+      VALUES (@user_id, @customer_key, @billing_key, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())), @card_name, @card_number)
     `);
 }
 
@@ -204,6 +214,8 @@ async function saveSubscriptionPaymentFailure(pool, { userId, orderId, planType,
 
 // 결제 성공 시 결제 이력 저장 + tb_user.end_date 1개월 연장 + 구독 상태 업데이트
 async function applySuccessfulPayment(pool, { userId, planType, amount, orderId, payment }) {
+  const { cardName, cardNumber } = extractCardInfo(payment);
+
   // 결제 이력 저장
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
@@ -212,13 +224,15 @@ async function applySuccessfulPayment(pool, { userId, planType, amount, orderId,
     .input('plan_type', sql.NVarChar, planType)
     .input('amount', sql.Int, amount)
     .input('status', sql.NVarChar, payment.status || 'DONE')
-    .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
+    .input('paid_at', sql.NVarChar, toKoreaDateTimeString(payment.approvedAt))
+    .input('card_name', sql.NVarChar, cardName)
+    .input('card_number', sql.NVarChar, cardNumber)
     .input('raw_response', sql.NVarChar, JSON.stringify(payment))
     .query(`
       INSERT INTO tb_subscription_payment
-        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, raw_response)
+        (user_id, order_id, payment_key, plan_type, amount, status, paid_at, card_name, card_number, raw_response)
       VALUES
-        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, @paid_at, @raw_response)
+        (@user_id, @order_id, @payment_key, @plan_type, @amount, @status, CONVERT(DATETIME, @paid_at, 120), @card_name, @card_number, @raw_response)
     `);
 
   // tb_user.end_date 1개월 연장 (만료되었거나 NULL이면 오늘 기준, 아니면 기존 만료일 기준)
@@ -238,10 +252,14 @@ async function applySuccessfulPayment(pool, { userId, planType, amount, orderId,
   // 구독 상태/다음 결제일 업데이트 (기존 레코드 보강)
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
+    .input('card_name', sql.NVarChar, cardName)
+    .input('card_number', sql.NVarChar, cardNumber)
     .query(`
       UPDATE tb_subscription
       SET status = 'ACTIVE',
           next_pay_date = DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())),
+          card_name = COALESCE(@card_name, card_name),
+          card_number = COALESCE(@card_number, card_number),
           updated_at = GETDATE()
       WHERE user_id = @user_id
     `);
@@ -320,6 +338,7 @@ router.post('/issue-billing-key', async (req, res) => {
     try {
       const billing = await issueBillingKey(authKey, customerKey);
       const billingKey = billing.billingKey;
+      const billingCard = extractCardInfo(billing);
 
       const payment = await requestBilling(billingKey, {
         customerKey,
@@ -333,7 +352,9 @@ router.post('/issue-billing-key', async (req, res) => {
         customerKey,
         billingKey,
         planType: plan,
-        amount
+        amount,
+        cardName: billingCard.cardName || extractCardInfo(payment).cardName,
+        cardNumber: billingCard.cardNumber || extractCardInfo(payment).cardNumber
       });
 
       await applySuccessfulPayment(pool, {

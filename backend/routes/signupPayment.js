@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getConnection, sql } = require('../config/database');
-const { confirmPayment } = require('../services/tossPayments');
+const { confirmPayment, toKoreaDateTimeString } = require('../services/tossPayments');
 
 // 가입 결제 금액(VAT 포함) - 서버에서 강제
 const SIGNUP_AMOUNT = 6600000;
@@ -27,13 +27,13 @@ async function saveSignupPaymentSuccess(pool, { name, phone, orderId, payment })
     .input('payment_key', sql.NVarChar, payment.paymentKey || null)
     .input('amount', sql.Int, SIGNUP_AMOUNT)
     .input('status', sql.NVarChar, payment.status || 'DONE')
-    .input('paid_at', sql.DateTime, payment.approvedAt ? new Date(payment.approvedAt) : new Date())
+    .input('paid_at', sql.NVarChar, toKoreaDateTimeString(payment.approvedAt))
     .input('raw_response', sql.NVarChar, JSON.stringify(payment))
     .query(`
       INSERT INTO tb_signup_payment
         (joiner_name, joiner_phone, order_id, order_name, payment_key, amount, status, paid_at, raw_response)
       VALUES
-        (@joiner_name, @joiner_phone, @order_id, @order_name, @payment_key, @amount, @status, @paid_at, @raw_response)
+        (@joiner_name, @joiner_phone, @order_id, @order_name, @payment_key, @amount, @status, CONVERT(DATETIME, @paid_at, 120), @raw_response)
     `);
 }
 

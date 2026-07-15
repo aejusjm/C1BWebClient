@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { loadTossPayments } from '@tosspayments/payment-sdk'
 import './SubscriptionPlanPage.css'
 import { useAlert } from '../contexts/AlertContext'
@@ -14,6 +15,7 @@ type PlanType = 'BASIC' | 'EXTRA' | 'EXTEND'
 function SubscriptionPlanPage() {
   const { showAlert } = useAlert()
   const { userInfo } = useUser()
+  const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
   const [basicFee, setBasicFee] = useState<number | null>(null)
 
@@ -39,9 +41,9 @@ function SubscriptionPlanPage() {
     const subscription = params.get('subscription')
     if (!subscription) return
 
-    // 쿼리스트링 정리 (재처리 방지)
+    // React Router location.search 도 함께 정리 (replaceState만 쓰면 App이 구독플랜으로 재고정됨)
     const clearQuery = () => {
-      window.history.replaceState({}, '', window.location.pathname)
+      navigate({ pathname: window.location.pathname, search: '' }, { replace: true })
     }
 
     if (subscription === 'extend-fail') {
@@ -133,7 +135,7 @@ function SubscriptionPlanPage() {
       })()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [navigate])
 
   const handleExtendPurchase = async () => {
     if (!userInfo.userId) {

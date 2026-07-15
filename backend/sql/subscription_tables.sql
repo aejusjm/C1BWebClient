@@ -12,6 +12,8 @@ BEGIN
         amount        INT           NOT NULL,                 -- 실제 청구 금액(원, VAT 포함)
         status        NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',-- PENDING/ACTIVE/CANCELED/FAILED
         next_pay_date DATE          NULL,                     -- 다음 결제 예정일
+        card_name     NVARCHAR(100) NULL,                     -- 등록 카드사명
+        card_number   NVARCHAR(30)  NULL,                     -- 마스킹 카드번호
         created_at    DATETIME      DEFAULT GETDATE(),
         updated_at    DATETIME      DEFAULT GETDATE()
     );
@@ -33,6 +35,8 @@ BEGIN
         amount       INT           NOT NULL,
         status       NVARCHAR(20)  NOT NULL,                  -- DONE/CANCELED/FAILED
         paid_at      DATETIME      NULL,
+        card_name    NVARCHAR(100) NULL,                      -- 결제 카드사명
+        card_number  NVARCHAR(30)  NULL,                      -- 마스킹 카드번호
         raw_response NVARCHAR(MAX) NULL,                      -- 토스 응답 원본(디버깅용)
         created_at   DATETIME      DEFAULT GETDATE()
     );
@@ -51,4 +55,18 @@ IF COL_LENGTH('tb_subscription_payment', 'refund_reason') IS NULL
 GO
 IF COL_LENGTH('tb_subscription_payment', 'refunded_at') IS NULL
     ALTER TABLE tb_subscription_payment ADD refunded_at DATETIME NULL;
+GO
+
+-- 2-2) 카드정보 컬럼
+IF COL_LENGTH('tb_subscription_payment', 'card_name') IS NULL
+    ALTER TABLE tb_subscription_payment ADD card_name NVARCHAR(100) NULL;
+GO
+IF COL_LENGTH('tb_subscription_payment', 'card_number') IS NULL
+    ALTER TABLE tb_subscription_payment ADD card_number NVARCHAR(30) NULL;
+GO
+IF COL_LENGTH('tb_subscription', 'card_name') IS NULL
+    ALTER TABLE tb_subscription ADD card_name NVARCHAR(100) NULL;
+GO
+IF COL_LENGTH('tb_subscription', 'card_number') IS NULL
+    ALTER TABLE tb_subscription ADD card_number NVARCHAR(30) NULL;
 GO
