@@ -54,8 +54,8 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
   const [subscriptionBasis, setSubscriptionBasis] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [hasSales, setHasSales] = useState(false)
-  const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
+  const hasSales = false
+  const excludeTestAccounts = true
   const [cohorts, setCohorts] = useState<CohortOption[]>([])
   const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   
@@ -81,7 +81,7 @@ function UserSalesStatsPage({ onNavigate }: UserSalesStatsPageProps) {
     if (userInfo?.userId) {
       loadStats()
     }
-  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, hasSales, excludeTestAccounts, cohortSeq, userInfo?.userId])
+  }, [dateFilter, userName, useCustomDate, startDate, endDate, sortField, sortOrder, cohortSeq, userInfo?.userId])
 
   const loadCohorts = async () => {
     try {

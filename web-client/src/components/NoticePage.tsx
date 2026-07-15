@@ -1,5 +1,6 @@
 // 공지사항 페이지 컴포넌트 - 전체 공지사항 목록 표시
 import { useState, useEffect } from 'react'
+import NoticeModal from './NoticeModal'
 import './NoticePage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -117,37 +118,19 @@ function NoticePage() {
         </div>
       </div>
 
-      {/* 팝업 모달 - 선택된 공지사항 상세 */}
-      {selectedNotice && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <button 
-              className="modal-close-btn"
-              onClick={() => setSelectedNotice(null)}
-            >
-              ✕
-            </button>
-            <div className="detail-header">
-              <h2 className="detail-title">
-                {selectedNotice.title}
-              </h2>
-              <p className="detail-date">
-                작성일: {formatDate(selectedNotice.input_date)}
-              </p>
-            </div>
-            <div 
-              className="detail-content"
-              dangerouslySetInnerHTML={{ __html: selectedNotice.contents }}
-            />
-            <button 
-              className="close-detail-btn"
-              onClick={() => setSelectedNotice(null)}
-            >
-              닫기
-            </button>
-          </div>
-        </div>
-      )}
+      <NoticeModal
+        notice={
+          selectedNotice
+            ? {
+                id: selectedNotice.seq,
+                title: selectedNotice.title,
+                date: formatDate(selectedNotice.input_date),
+                content: selectedNotice.contents
+              }
+            : null
+        }
+        onClose={() => setSelectedNotice(null)}
+      />
     </div>
   )
 }

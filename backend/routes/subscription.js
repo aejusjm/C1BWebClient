@@ -12,7 +12,7 @@ const VAT_RATE = 0.1;
 const PLAN_META = {
   BASIC: { orderName: 'C1B 기본 플랜' },
   EXTRA: { orderName: 'C1B 추가 플랜', baseAmount: 50000 },
-  EXTEND: { orderName: 'C1B 2주 연장', amount: 550000 }
+  EXTEND: { orderName: 'C1B 1개월 연장', amount: 990000 }
 };
 
 function getPlanConfig(plan) {
@@ -53,7 +53,7 @@ function generateOrderId(userId) {
   return `SUB_${userId}_${Date.now()}_${rand}`;
 }
 
-// 2주 연장(일회성 결제) 주문번호
+// 1개월 연장(일회성 결제) 주문번호
 function generateExtendOrderId(userId) {
   const rand = crypto.randomBytes(4).toString('hex');
   return `EXT_${userId}_${Date.now()}_${rand}`;
@@ -77,13 +77,13 @@ async function hasActiveSubscription(pool, userId) {
   return result.recordset.length > 0;
 }
 
-// 2주 연장 주문번호가 해당 유저 소유인지 검증
+// 1개월 연장 주문번호가 해당 유저 소유인지 검증
 function isValidExtendOrderId(orderId, userId) {
   if (!orderId || !userId) return false;
   return String(orderId).startsWith(`EXT_${userId}_`);
 }
 
-// 2주 연장(일회성) 결제 성공: 결제 이력 저장 + tb_user.end_date 2주 연장
+// 1개월 연장(일회성) 결제 성공: 결제 이력 저장 + tb_user.end_date 1개월 연장
 async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
   await pool.request()
     .input('user_id', sql.NVarChar, userId)
@@ -105,7 +105,7 @@ async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
     .input('user_id', sql.NVarChar, userId)
     .query(`
       UPDATE tb_user
-      SET end_date = DATEADD(WEEK, 2,
+      SET end_date = DATEADD(MONTH, 1,
         CASE
           WHEN end_date IS NULL OR end_date < CONVERT(DATE, GETDATE())
           THEN CONVERT(DATE, GETDATE())
@@ -115,7 +115,7 @@ async function applyExtendPayment(pool, { userId, amount, orderId, payment }) {
     `);
 }
 
-// 2주 연장 결제 실패 이력 저장 (완료 건이 없을 때만)
+// 1개월 연장 결제 실패 이력 저장 (완료 건이 없을 때만)
 async function saveExtendPaymentFailure(pool, { userId, orderId, amount, error }) {
   const existing = await pool.request()
     .input('order_id', sql.NVarChar, orderId)
@@ -258,7 +258,7 @@ router.post('/prepare', async (req, res) => {
     }
 
     if (plan === 'EXTEND') {
-      return res.status(400).json({ success: false, message: '2주 연장은 일회성 결제로 진행해주세요.' });
+      return res.status(400).json({ success: false, message: '1개월 연장은 일회성 결제로 진행해주세요.' });
     }
 
     const pool = await getConnection();
@@ -300,7 +300,7 @@ router.post('/issue-billing-key', async (req, res) => {
     }
 
     if (plan === 'EXTEND') {
-      return res.status(400).json({ success: false, message: '2주 연장은 일회성 결제로 진행해주세요.' });
+      return res.status(400).json({ success: false, message: '1개월 연장은 일회성 결제로 진행해주세요.' });
     }
 
     const pool = await getConnection();
@@ -368,7 +368,7 @@ router.post('/issue-billing-key', async (req, res) => {
   }
 });
 
-// 2-1) 2주 연장 일회성 결제 준비
+// 2-1) 1개월 연장 일회성 결제 준비
 router.post('/extend/prepare', async (req, res) => {
   try {
     const { userId } = req.body;
@@ -386,12 +386,12 @@ router.post('/extend/prepare', async (req, res) => {
       data: { orderId, amount, orderName }
     });
   } catch (error) {
-    console.error('2주 연장 결제 준비 오류:', error);
+    console.error('1개월 연장 결제 준비 오류:', error);
     res.status(500).json({ success: false, message: '결제 준비 중 오류가 발생했습니다.' });
   }
 });
 
-// 2-2) 2주 연장 일회성 결제 승인
+// 2-2) 1개월 연장 일회성 결제 승인
 router.post('/extend/confirm', async (req, res) => {
   try {
     const { paymentKey, orderId, amount, userId } = req.body;
@@ -436,7 +436,7 @@ router.post('/extend/confirm', async (req, res) => {
 
     res.json({ success: true, data: { orderId, status: payment.status || 'DONE' } });
   } catch (error) {
-    console.error('2주 연장 결제 승인 오류:', error);
+    console.error('1개월 연장 결제 승인 오류:', error);
 
     try {
       const { orderId, amount, userId } = req.body || {};
@@ -450,7 +450,7 @@ router.post('/extend/confirm', async (req, res) => {
         });
       }
     } catch (e) {
-      console.error('2주 연장 결제 실패 이력 저장 오류:', e);
+      console.error('1개월 연장 결제 실패 이력 저장 오류:', e);
     }
 
     res.status(500).json({ success: false, message: error.message || '결제 승인 중 오류가 발생했습니다.' });

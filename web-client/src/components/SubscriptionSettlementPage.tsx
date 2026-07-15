@@ -10,6 +10,9 @@ const COHORT_API_URL = `${API_BASE}/api/cohorts`
 interface CohortOption {
   seq: number
   cohort_name: string
+  sub_base_start?: number | string | null
+  sub_base_end?: number | string | null
+  sub_fee?: number
 }
 
 interface SettlementRow {
@@ -59,6 +62,56 @@ function formatDateOnly(value: string | null) {
 
 function formatAmount(amount: number) {
   return `${Math.floor(Number(amount || 0) / 10000).toLocaleString()} 만원`
+}
+
+function parseCohortDay(value: number | string | null | undefined): number | null {
+  if (value === undefined || value === null || value === '') return null
+  const s = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = Number(s.slice(8, 10))
+    return d >= 1 && d <= 31 ? d : null
+  }
+  const n = parseInt(s, 10)
+  return Number.isFinite(n) && n >= 1 && n <= 31 ? n : null
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function daysInMonth(year: number, month: number) {
+  return new Date(year, month, 0).getDate()
+}
+
+function buildYmd(year: number, month: number, day: number) {
+  const dim = daysInMonth(year, month)
+  const d = Math.min(Math.max(day, 1), dim)
+  return `${year}-${pad2(month)}-${pad2(d)}`
+}
+
+/** 정산년월 + 구독기준 일(日)로 정산기간 산출 (시작일 > 종료일이면 시작은 전월) */
+function buildPeriodFromCohortDays(
+  year: number,
+  month: number,
+  startDay: number | null,
+  endDay: number | null
+): { start?: string; end?: string } {
+  const result: { start?: string; end?: string } = {}
+  if (endDay) result.end = buildYmd(year, month, endDay)
+  if (startDay) {
+    if (endDay && startDay > endDay) {
+      let y = year
+      let m = month - 1
+      if (m < 1) {
+        m = 12
+        y -= 1
+      }
+      result.start = buildYmd(y, m, startDay)
+    } else {
+      result.start = buildYmd(year, month, startDay)
+    }
+  }
+  return result
 }
 
 /** 구독료에서 부가세 10% 제외 (사용자별 매출과 동일) */
@@ -114,25 +167,28 @@ function SubscriptionSettlementPage() {
   const [periodEnd, setPeriodEnd] = useState(() => toDateInputValue(now))
 
   const [listCohortSeq, setListCohortSeq] = useState<number | ''>('')
-  const [listYear, setListYear] = useState<number | ''>('')
-  const [listMonth, setListMonth] = useState<number | ''>('')
+  const [listYear, setListYear] = useState<number | ''>(now.getFullYear())
+  const [listMonth, setListMonth] = useState<number | ''>(now.getMonth() + 1)
   const [userKeyword, setUserKeyword] = useState('')
 
   const [cohorts, setCohorts] = useState<CohortOption[]>([])
   const [rows, setRows] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
-  const [sortField, setSortField] = useState<SortField | null>('total_sales')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null)
 
   const yearOptions = Array.from({ length: 8 }, (_, i) => now.getFullYear() - i)
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 
   useEffect(() => {
     loadCohorts()
+  }, [])
+
+  useEffect(() => {
     loadList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [listCohortSeq, listYear, listMonth])
 
   const loadCohorts = async () => {
     try {
@@ -140,15 +196,44 @@ function SubscriptionSettlementPage() {
       const result = await response.json()
       if (result.success) {
         setCohorts(
-          (result.data || []).map((row: { seq: number; cohort_name: string }) => ({
+          (result.data || []).map((row: {
+            seq: number
+            cohort_name: string
+            sub_base_start?: number | string | null
+            sub_base_end?: number | string | null
+            sub_fee?: number
+          }) => ({
             seq: row.seq,
-            cohort_name: row.cohort_name
+            cohort_name: row.cohort_name,
+            sub_base_start: parseCohortDay(row.sub_base_start),
+            sub_base_end: parseCohortDay(row.sub_base_end),
+            sub_fee: Number(row.sub_fee || 0)
           }))
         )
       }
     } catch (error) {
       console.error('기수 목록 조회 오류:', error)
     }
+  }
+
+  const applyCohortPeriod = (cohort: CohortOption, year: number, month: number) => {
+    const period = buildPeriodFromCohortDays(
+      year,
+      month,
+      parseCohortDay(cohort.sub_base_start),
+      parseCohortDay(cohort.sub_base_end)
+    )
+    if (period.start) setPeriodStart(period.start)
+    if (period.end) setPeriodEnd(period.end)
+  }
+
+  const handleCohortChange = (value: string) => {
+    const seq = value ? Number(value) : ''
+    setSettleCohortSeq(seq)
+    if (!seq) return
+    const selected = cohorts.find((c) => c.seq === seq)
+    if (!selected) return
+    applyCohortPeriod(selected, settleYear, settleMonth)
   }
 
   const loadList = async () => {
@@ -310,7 +395,19 @@ function SubscriptionSettlementPage() {
           periodEnd
         })
       })
-      const result = await response.json()
+
+      let result: { success?: boolean; message?: string } = {}
+      try {
+        result = await response.json()
+      } catch {
+        await showAlert(
+          response.status === 404
+            ? '정산취소 API를 찾을 수 없습니다. 백엔드 배포/재시작 후 다시 시도해주세요.'
+            : `정산취소 중 오류가 발생했습니다. (HTTP ${response.status})`
+        )
+        return
+      }
+
       if (result.success) {
         await showAlert(result.message || '정산이 취소되었습니다.')
         await loadList()
@@ -330,13 +427,18 @@ function SubscriptionSettlementPage() {
   }
 
   const resetAndLoad = async () => {
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
     setListCohortSeq('')
-    setListYear('')
-    setListMonth('')
+    setListYear(year)
+    setListMonth(month)
     setUserKeyword('')
     try {
       setLoading(true)
-      const response = await fetch(API_URL)
+      const params = new URLSearchParams()
+      params.append('settleYear', String(year))
+      params.append('settleMonth', String(month))
+      const response = await fetch(`${API_URL}?${params}`)
       const result = await response.json()
       if (result.success) setRows(result.data || [])
     } finally {
@@ -370,7 +472,7 @@ function SubscriptionSettlementPage() {
             <label>기수</label>
             <select
               value={settleCohortSeq}
-              onChange={(e) => setSettleCohortSeq(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) => handleCohortChange(e.target.value)}
               disabled={processing}
             >
               <option value="">선택하세요</option>
@@ -383,7 +485,14 @@ function SubscriptionSettlementPage() {
             <label>정산년</label>
             <select
               value={settleYear}
-              onChange={(e) => setSettleYear(Number(e.target.value))}
+              onChange={(e) => {
+                const year = Number(e.target.value)
+                setSettleYear(year)
+                if (settleCohortSeq) {
+                  const selected = cohorts.find((c) => c.seq === settleCohortSeq)
+                  if (selected) applyCohortPeriod(selected, year, settleMonth)
+                }
+              }}
               disabled={processing}
             >
               {yearOptions.map((y) => (
@@ -395,7 +504,14 @@ function SubscriptionSettlementPage() {
             <label>정산월</label>
             <select
               value={settleMonth}
-              onChange={(e) => setSettleMonth(Number(e.target.value))}
+              onChange={(e) => {
+                const month = Number(e.target.value)
+                setSettleMonth(month)
+                if (settleCohortSeq) {
+                  const selected = cohorts.find((c) => c.seq === settleCohortSeq)
+                  if (selected) applyCohortPeriod(selected, settleYear, month)
+                }
+              }}
               disabled={processing}
             >
               {monthOptions.map((m) => (
@@ -433,7 +549,8 @@ function SubscriptionSettlementPage() {
         </div>
         <p className="settlement-hint">
           선택한 기수의 사용자(사용여부 &apos;사용&apos;)만 대상으로 정산기간 총매출/구독료를 계산합니다.
-          환급금 = 기준정보 구독료 − 계산 구독료
+          환급금 = 기수 구독료(없으면 기준정보 구독료) − 계산 구독료.
+          기수 선택 시 구독기준 시작/종료일(일)과 정산년월로 정산기간이 반영됩니다.
         </p>
       </div>
 

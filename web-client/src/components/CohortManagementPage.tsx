@@ -13,11 +13,11 @@ interface Cohort {
   start_date: string
   end_date: string
   signup_fee: number | string
-  sub_base_start: string
-  sub_base_end: string
+  sub_base_start: number | string
+  sub_base_end: number | string
   sub_fee: number | string
-  sub_notice_start: string
-  sub_notice_end: string
+  sub_notice_start: number | string
+  sub_notice_end: number | string
   created_at?: string
   updated_at?: string
 }
@@ -28,6 +28,18 @@ function toDateInputValue(value: string | null | undefined) {
   if (!value) return ''
   const s = String(value).replace('Z', '').slice(0, 10)
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''
+}
+
+function toDayInputValue(value: number | string | null | undefined) {
+  if (value === undefined || value === null || value === '') return ''
+  // DATE로 저장된 과거 데이터 호환: '2026-03-16' → 16
+  const s = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const day = Number(s.slice(8, 10))
+    return day >= 1 && day <= 31 ? String(day) : ''
+  }
+  const n = parseInt(s, 10)
+  return Number.isFinite(n) && n >= 1 && n <= 31 ? String(n) : ''
 }
 
 function formatDate(value: string | null | undefined) {
@@ -42,6 +54,11 @@ function formatDate(value: string | null | undefined) {
   } catch {
     return s
   }
+}
+
+function formatDay(value: number | string | null | undefined) {
+  const s = toDayInputValue(value)
+  return s ? `${s}일` : '-'
 }
 
 function formatAmount(value: number | string | null | undefined) {
@@ -71,10 +88,10 @@ function normalizeCohort(row: Cohort): Cohort {
     ot_date: toDateInputValue(row.ot_date),
     start_date: toDateInputValue(row.start_date),
     end_date: toDateInputValue(row.end_date),
-    sub_base_start: toDateInputValue(row.sub_base_start),
-    sub_base_end: toDateInputValue(row.sub_base_end),
-    sub_notice_start: toDateInputValue(row.sub_notice_start),
-    sub_notice_end: toDateInputValue(row.sub_notice_end),
+    sub_base_start: toDayInputValue(row.sub_base_start),
+    sub_base_end: toDayInputValue(row.sub_base_end),
+    sub_notice_start: toDayInputValue(row.sub_notice_start),
+    sub_notice_end: toDayInputValue(row.sub_notice_end),
     signup_fee: Number(row.signup_fee || 0),
     sub_fee: Number(row.sub_fee || 0)
   }
@@ -296,11 +313,11 @@ function CohortManagementPage() {
                     <td>{formatDate(row.start_date)}</td>
                     <td>{formatDate(row.end_date)}</td>
                     <td className="amount-cell">{formatAmount(row.signup_fee)}</td>
-                    <td>{formatDate(row.sub_base_start)}</td>
-                    <td>{formatDate(row.sub_base_end)}</td>
+                    <td>{formatDay(row.sub_base_start)}</td>
+                    <td>{formatDay(row.sub_base_end)}</td>
                     <td className="amount-cell">{formatAmount(row.sub_fee)}</td>
-                    <td>{formatDate(row.sub_notice_start)}</td>
-                    <td>{formatDate(row.sub_notice_end)}</td>
+                    <td>{formatDay(row.sub_notice_start)}</td>
+                    <td>{formatDay(row.sub_notice_end)}</td>
                     <td>
                       <button type="button" className="grid-btn edit-btn" onClick={() => handleEdit(row)}>
                         수정
@@ -388,50 +405,67 @@ function CohortManagementPage() {
                 <div className="form-group">
                   <label className="form-label">구독기준 시작일</label>
                   <input
-                    type="date"
+                    type="number"
                     className="form-input"
                     value={selected.sub_base_start}
                     onChange={(e) => handleInputChange('sub_base_start', e.target.value)}
+                    min={1}
+                    max={31}
+                    step={1}
+                    placeholder="일 (1~31)"
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">구독기준 종료일</label>
                   <input
-                    type="date"
+                    type="number"
                     className="form-input"
                     value={selected.sub_base_end}
                     onChange={(e) => handleInputChange('sub_base_end', e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">구독료</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={selected.sub_fee}
-                    onChange={(e) => handleInputChange('sub_fee', e.target.value)}
-                    min={0}
+                    min={1}
+                    max={31}
                     step={1}
+                    placeholder="일 (1~31)"
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">구독공지 시작일</label>
                   <input
-                    type="date"
+                    type="number"
                     className="form-input"
                     value={selected.sub_notice_start}
                     onChange={(e) => handleInputChange('sub_notice_start', e.target.value)}
+                    min={1}
+                    max={31}
+                    step={1}
+                    placeholder="일 (1~31)"
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">구독공지 종료일</label>
                   <input
-                    type="date"
+                    type="number"
                     className="form-input"
                     value={selected.sub_notice_end}
                     onChange={(e) => handleInputChange('sub_notice_end', e.target.value)}
+                    min={1}
+                    max={31}
+                    step={1}
+                    placeholder="일 (1~31)"
                   />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">구독료</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={selected.sub_fee}
+                  onChange={(e) => handleInputChange('sub_fee', e.target.value)}
+                  min={0}
+                  step={1}
+                />
               </div>
             </div>
             <div className="modal-footer">

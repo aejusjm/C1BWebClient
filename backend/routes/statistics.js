@@ -167,11 +167,11 @@ router.get('/user-sales', async (req, res) => {
         cp_sales,
         (ss_order_count + cp_order_count) as total_order_count,
         (ss_sales + cp_sales) as total_sales,
-        (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 as total_profit,
+        (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 0) / 100 as total_profit,
         CASE 
           WHEN (ss_sales + cp_sales) >= ISNULL((SELECT TOP 1 base_sub_amt FROM tb_setting_info), 0) 
           THEN ISNULL((SELECT TOP 1 sub_fee FROM tb_setting_info), 0)
-          ELSE (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 / 2
+          ELSE (ss_sales + cp_sales) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 0) / 100 / 2
         END as subscription_fee
       FROM UserStats
       ${orderByClause}
@@ -271,7 +271,7 @@ router.get('/daily-sales/:userId', async (req, res) => {
           B.biz_idx,
           COUNT(*) AS order_cnt,
           SUM(CAST(A.pay_amt AS BIGINT)) AS pay_anmt,
-          SUM(CAST(A.pay_amt AS BIGINT)) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 AS pre_amt
+          SUM(CAST(A.pay_amt AS BIGINT)) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 0) / 100 AS pre_amt
         FROM tb_order_info A
         INNER JOIN tb_user_market_ss B
           ON A.user_id = B.user_id
@@ -296,7 +296,7 @@ router.get('/daily-sales/:userId', async (req, res) => {
           B.biz_idx,
           COUNT(*) AS order_cnt,
           SUM(CAST(A.pay_amt AS BIGINT)) AS pay_anmt,
-          SUM(CAST(A.pay_amt AS BIGINT)) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 27) / 100 AS pre_amt
+          SUM(CAST(A.pay_amt AS BIGINT)) * ISNULL((SELECT TOP 1 rate_of_return FROM tb_setting_info), 0) / 100 AS pre_amt
         FROM tb_order_info A
         INNER JOIN tb_user_market_cp B
           ON A.user_id = B.user_id

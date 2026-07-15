@@ -17,11 +17,11 @@ async function ensureCohortTable(pool) {
         start_date        DATE          NULL,
         end_date          DATE          NULL,
         signup_fee        INT           NOT NULL DEFAULT 0,
-        sub_base_start    DATE          NULL,
-        sub_base_end      DATE          NULL,
+        sub_base_start    INT           NULL,
+        sub_base_end      INT           NULL,
         sub_fee           INT           NOT NULL DEFAULT 0,
-        sub_notice_start  DATE          NULL,
-        sub_notice_end    DATE          NULL,
+        sub_notice_start  INT           NULL,
+        sub_notice_end    INT           NULL,
         created_at        DATETIME      DEFAULT GETDATE(),
         updated_at        DATETIME      NULL
       );
@@ -30,12 +30,59 @@ async function ensureCohortTable(pool) {
       CREATE INDEX IX_tb_cohort_period ON tb_cohort (start_date, end_date);
     END
   `);
+
+  // 기존 DATE 컬럼이면 일(日) INT로 전환
+  await migrateDateColsToDay(pool, 'sub_base_start', 'sub_base_end');
+  await migrateDateColsToDay(pool, 'sub_notice_start', 'sub_notice_end');
+
   tableReady = true;
+}
+
+async function migrateDateColsToDay(pool, startCol, endCol) {
+  const colCheck = await pool.request().query(`
+    SELECT DATA_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'tb_cohort'
+      AND COLUMN_NAME = '${startCol}'
+  `);
+  const dataType = colCheck.recordset[0]?.DATA_TYPE;
+  if (dataType !== 'date') return;
+
+  const startDay = `${startCol}_day`;
+  const endDay = `${endCol}_day`;
+
+  await pool.request().query(`
+    ALTER TABLE tb_cohort ADD ${startDay} INT NULL;
+    ALTER TABLE tb_cohort ADD ${endDay} INT NULL;
+  `);
+  await pool.request().query(`
+    UPDATE tb_cohort
+    SET
+      ${startDay} = CASE WHEN ${startCol} IS NULL THEN NULL ELSE DAY(${startCol}) END,
+      ${endDay} = CASE WHEN ${endCol} IS NULL THEN NULL ELSE DAY(${endCol}) END;
+  `);
+  await pool.request().query(`
+    ALTER TABLE tb_cohort DROP COLUMN ${startCol};
+    ALTER TABLE tb_cohort DROP COLUMN ${endCol};
+  `);
+  await pool.request().query(`
+    EXEC sp_rename 'tb_cohort.${startDay}', '${startCol}', 'COLUMN';
+  `);
+  await pool.request().query(`
+    EXEC sp_rename 'tb_cohort.${endDay}', '${endCol}', 'COLUMN';
+  `);
 }
 
 function toNullableDate(value) {
   if (value === undefined || value === null || String(value).trim() === '') return null;
   return String(value).trim().slice(0, 10);
+}
+
+function toNullableDay(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  const n = parseInt(String(value).replace(/,/g, ''), 10);
+  if (!Number.isFinite(n) || n < 1 || n > 31) return null;
+  return n;
 }
 
 function toIntAmount(value) {
@@ -129,11 +176,11 @@ router.post('/', async (req, res) => {
       .input('start_date', sql.Date, toNullableDate(body.start_date))
       .input('end_date', sql.Date, toNullableDate(body.end_date))
       .input('signup_fee', sql.Int, toIntAmount(body.signup_fee))
-      .input('sub_base_start', sql.Date, toNullableDate(body.sub_base_start))
-      .input('sub_base_end', sql.Date, toNullableDate(body.sub_base_end))
+      .input('sub_base_start', sql.Int, toNullableDay(body.sub_base_start))
+      .input('sub_base_end', sql.Int, toNullableDay(body.sub_base_end))
       .input('sub_fee', sql.Int, toIntAmount(body.sub_fee))
-      .input('sub_notice_start', sql.Date, toNullableDate(body.sub_notice_start))
-      .input('sub_notice_end', sql.Date, toNullableDate(body.sub_notice_end))
+      .input('sub_notice_start', sql.Int, toNullableDay(body.sub_notice_start))
+      .input('sub_notice_end', sql.Int, toNullableDay(body.sub_notice_end))
       .query(`
         INSERT INTO tb_cohort (
           cohort_name, ot_date, start_date, end_date, signup_fee,
@@ -180,11 +227,11 @@ router.put('/:seq', async (req, res) => {
       .input('start_date', sql.Date, toNullableDate(body.start_date))
       .input('end_date', sql.Date, toNullableDate(body.end_date))
       .input('signup_fee', sql.Int, toIntAmount(body.signup_fee))
-      .input('sub_base_start', sql.Date, toNullableDate(body.sub_base_start))
-      .input('sub_base_end', sql.Date, toNullableDate(body.sub_base_end))
+      .input('sub_base_start', sql.Int, toNullableDay(body.sub_base_start))
+      .input('sub_base_end', sql.Int, toNullableDay(body.sub_base_end))
       .input('sub_fee', sql.Int, toIntAmount(body.sub_fee))
-      .input('sub_notice_start', sql.Date, toNullableDate(body.sub_notice_start))
-      .input('sub_notice_end', sql.Date, toNullableDate(body.sub_notice_end))
+      .input('sub_notice_start', sql.Int, toNullableDay(body.sub_notice_start))
+      .input('sub_notice_end', sql.Int, toNullableDay(body.sub_notice_end))
       .query(`
         UPDATE tb_cohort
         SET

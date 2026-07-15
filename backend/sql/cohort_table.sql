@@ -9,11 +9,11 @@ BEGIN
         start_date        DATE          NULL,               -- 시작일
         end_date          DATE          NULL,               -- 종료일
         signup_fee        INT           NOT NULL DEFAULT 0, -- 가입비
-        sub_base_start    DATE          NULL,               -- 구독기준 시작일
-        sub_base_end      DATE          NULL,               -- 구독기준 종료일
+        sub_base_start    INT           NULL,               -- 구독기준 시작일(일, 1~31)
+        sub_base_end      INT           NULL,               -- 구독기준 종료일(일, 1~31)
         sub_fee           INT           NOT NULL DEFAULT 0, -- 구독료
-        sub_notice_start  DATE          NULL,               -- 구독공지 시작일
-        sub_notice_end    DATE          NULL,               -- 구독공지 종료일
+        sub_notice_start  INT           NULL,               -- 구독공지 시작일(일, 1~31)
+        sub_notice_end    INT           NULL,               -- 구독공지 종료일(일, 1~31)
         created_at        DATETIME      DEFAULT GETDATE(),
         updated_at        DATETIME      NULL
     );

@@ -47,7 +47,7 @@ function SubscriptionPlanPage() {
     if (subscription === 'extend-fail') {
       const message = params.get('message') || '결제가 취소되었거나 실패했습니다.'
       clearQuery()
-      showAlert(`2주 연장 결제 실패: ${message}`)
+      showAlert(`1개월 연장 결제 실패: ${message}`)
       return
     }
 
@@ -77,12 +77,12 @@ function SubscriptionPlanPage() {
           })
           const result = await response.json()
           if (result.success) {
-            await showAlert('2주 연장 결제가 완료되었습니다. 이용 기간이 2주 연장되었습니다.')
+            await showAlert('1개월 연장 결제가 완료되었습니다. 이용 기간이 1개월 연장되었습니다.')
           } else {
             await showAlert(result.message || '결제 승인에 실패했습니다.')
           }
         } catch (error) {
-          console.error('2주 연장 결제 승인 오류:', error)
+          console.error('1개월 연장 결제 승인 오류:', error)
           await showAlert('결제 승인 처리 중 오류가 발생했습니다.')
         } finally {
           setProcessing(false)
@@ -174,7 +174,7 @@ function SubscriptionPlanPage() {
         failUrl: `${origin}/?subscription=extend-fail`
       })
     } catch (error) {
-      console.error('2주 연장 결제 요청 오류:', error)
+      console.error('1개월 연장 결제 요청 오류:', error)
       setProcessing(false)
     }
   }
@@ -290,9 +290,9 @@ function SubscriptionPlanPage() {
         </div>
 
         <div className="plan-card extend">
-          <div className="plan-badge">2주 연장</div>
+          <div className="plan-badge">1개월 연장</div>
           <div className="plan-price">
-            <strong>550,000원</strong>
+            <strong>990,000원</strong>
             <span>(VAT 포함)</span>
           </div>
           <div className="plan-divider" />
@@ -301,7 +301,7 @@ function SubscriptionPlanPage() {
             <li>옵션 및 상세페이지 이미지 자동 번역</li>
             <li>자동 상품갈이 : 매일 150~200개 삭제 후 업로드 자동</li>
             <li>상세페이지 상/하단 이미지 무료 생성(변경 요청 가능)</li>
-            <li>결제 시 마다 2주씩 연장</li>
+            <li>결제 시 마다 1개월씩 연장</li>
           </ul>
 
           <div className="plan-actions">

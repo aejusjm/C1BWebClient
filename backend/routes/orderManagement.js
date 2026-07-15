@@ -913,11 +913,10 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
       storeCondition = 'AND 1 = 0';
     }
     
-    // 총 매출 및 예상수익 쿼리 (취소, 반품 제외)
+    // 총 매출 쿼리 (취소, 반품 제외) — 예상수익/예상구독료는 기준정보 수익율로 산출
     const summaryQuery = `
       SELECT 
-        SUM(CAST(A.pay_amt AS BIGINT)) as total_sales,
-        SUM(ISNULL(TRY_CAST(A.pre_amt AS BIGINT), 0)) as expected_profit
+        SUM(CAST(A.pay_amt AS BIGINT)) as total_sales
       FROM tb_order_info A
       LEFT OUTER JOIN tb_user_market_ss B_SS
         ON A.user_id = B_SS.user_id 
@@ -942,12 +941,40 @@ router.get('/dashboard/summary/:userId', async (req, res) => {
     const summaryResult = await pool.request()
       .input('userId', sql.NVarChar, userId)
       .query(summaryQuery);
+
+    const settingResult = await pool.request().query(`
+      SELECT TOP 1
+        ISNULL(rate_of_return, 0) AS rate_of_return,
+        ISNULL(base_sub_amt, 0) AS base_sub_amt,
+        ISNULL(sub_fee, 0) AS sub_fee
+      FROM tb_setting_info
+    `);
+    const setting = settingResult.recordset[0] || { rate_of_return: 0, base_sub_amt: 0, sub_fee: 0 };
+    const rateOfReturn = Number(setting.rate_of_return) || 0;
+    const baseSubAmt = Number(setting.base_sub_amt) || 0;
+    const subFee = Math.round(Number(setting.sub_fee) || 0);
+
+    const totalSales = Number(summaryResult.recordset[0]?.total_sales) || 0;
+    const expectedProfit = Math.round(totalSales * rateOfReturn / 100);
+    const expectedSubscriptionFee = totalSales >= baseSubAmt
+      ? subFee
+      : Math.round(totalSales * rateOfReturn / 100 / 2);
     
-    console.log('주문&매출 현황 요약:', summaryResult.recordset[0]);
+    console.log('주문&매출 현황 요약:', {
+      total_sales: totalSales,
+      rate_of_return: rateOfReturn,
+      expected_profit: expectedProfit,
+      expected_subscription_fee: expectedSubscriptionFee
+    });
     
     res.json({
       success: true,
-      data: summaryResult.recordset[0]
+      data: {
+        total_sales: totalSales,
+        rate_of_return: rateOfReturn,
+        expected_profit: expectedProfit,
+        expected_subscription_fee: expectedSubscriptionFee
+      }
     });
   } catch (error) {
     console.error('주문&매출 현황 요약 조회 오류:', error);

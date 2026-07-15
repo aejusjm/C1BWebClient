@@ -35,6 +35,7 @@ import FakePurchaseProductPage from './components/FakePurchaseProductPage'
 import FakePurchaseSchedulePage from './components/FakePurchaseSchedulePage'
 import FakePurchaseInfoPage from './components/FakePurchaseInfoPage'
 import SimpleMobileSalesPage from './components/SimpleMobileSalesPage'
+import SettlementNoticePopup from './components/SettlementNoticePopup'
 import { UserProvider } from './contexts/UserContext'
 import { FilterProvider } from './contexts/FilterContext'
 import { AlertProvider, useAlert } from './contexts/AlertContext'
@@ -51,13 +52,11 @@ const ADMIN_DENIED_MESSAGE = '관리자만 접근할 수 있는 메뉴입니다.
 
 function AuthenticatedApp({
   userInfo,
-  setUserInfo,
   onLogout,
   activeMenu,
   setActiveMenu
 }: {
   userInfo: UserInfo
-  setUserInfo: React.Dispatch<React.SetStateAction<UserInfo>>
   onLogout: () => void
   activeMenu: string
   setActiveMenu: React.Dispatch<React.SetStateAction<string>>
@@ -119,8 +118,7 @@ function AuthenticatedApp({
   }
 
   return (
-    <UserProvider userInfo={userInfo} setUserInfo={setUserInfo}>
-      <FilterProvider>
+    <FilterProvider>
         <div className="app-container">
           <Sidebar
             activeMenu={activeMenu}
@@ -161,10 +159,19 @@ function AuthenticatedApp({
             {renderAdminPage('fake-purchase-product', <FakePurchaseProductPage />)}
             {renderAdminPage('fake-purchase-schedule', <FakePurchaseSchedulePage />)}
           </main>
-        </div>
-      </FilterProvider>
-    </UserProvider>
+      </div>
+    </FilterProvider>
   )
+}
+
+function normalizeUserInfo(raw: Record<string, unknown>): UserInfo {
+  const userId = String(raw.userId || raw.user_id || '').trim()
+  return {
+    userId,
+    userName: String(raw.userName || raw.user_name || ''),
+    userType: String(raw.userType || raw.user_type || ''),
+    endDate: (raw.endDate ?? raw.end_date ?? null) as string | null
+  }
 }
 
 function App() {
@@ -181,7 +188,7 @@ function App() {
   useEffect(() => {
     const savedUserInfo = localStorage.getItem('userInfo')
     if (savedUserInfo) {
-      const parsedUserInfo = JSON.parse(savedUserInfo)
+      const parsedUserInfo = normalizeUserInfo(JSON.parse(savedUserInfo))
       setIsLoggedIn(true)
       setUserInfo(parsedUserInfo)
       if (isAdminUser(parsedUserInfo.userType)) {
@@ -238,13 +245,15 @@ function App() {
 
   return (
     <AlertProvider>
-      <AuthenticatedApp
-        userInfo={userInfo}
-        setUserInfo={setUserInfo}
-        onLogout={handleLogout}
-        activeMenu={activeMenu}
-        setActiveMenu={setActiveMenu}
-      />
+      <UserProvider userInfo={userInfo} setUserInfo={setUserInfo}>
+        <AuthenticatedApp
+          userInfo={userInfo}
+          onLogout={handleLogout}
+          activeMenu={activeMenu}
+          setActiveMenu={setActiveMenu}
+        />
+        <SettlementNoticePopup />
+      </UserProvider>
     </AlertProvider>
   )
 }

@@ -126,13 +126,21 @@ function NoticeManagementPage() {
       setLoading(true)
       
       if (isNewNotice) {
-        // 새 공지 추가
+        const payload = {
+          gubun: editData.gubun || '',
+          title: editData.title || '',
+          contents: editData.contents || '',
+          fix_yn: editData.fix_yn || 'N',
+          notice_type: editData.notice_type || '',
+          popup_yn: editData.popup_yn || 'N',
+          use_yn: editData.use_yn || 'Y'
+        }
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(editData)
+          body: JSON.stringify(payload)
         })
         
         const result = await response.json()
@@ -145,13 +153,21 @@ function NoticeManagementPage() {
           await showAlert(result.message || '등록 중 오류가 발생했습니다.')
         }
       } else {
-        // 기존 공지 수정
+        const payload = {
+          gubun: editData.gubun || '',
+          title: editData.title || '',
+          contents: editData.contents || '',
+          fix_yn: editData.fix_yn || 'N',
+          notice_type: editData.notice_type || '',
+          popup_yn: editData.popup_yn || 'N',
+          use_yn: editData.use_yn || 'Y'
+        }
         const response = await fetch(`${API_URL}/${selectedNotice?.seq}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(editData)
+          body: JSON.stringify(payload)
         })
         
         const result = await response.json()

@@ -15,28 +15,39 @@ function NoticeModal({ notice, onClose }: NoticeModalProps) {
   if (!notice) return null
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <button 
-          className="modal-close-btn"
+    <div className="notice-modal-overlay" onClick={onClose}>
+      <div
+        className="notice-modal-content"
+        role="dialog"
+        aria-labelledby="notice-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="notice-modal-close-x"
           onClick={onClose}
+          aria-label="닫기"
         >
           ✕
         </button>
-        <div className="detail-header">
-          <h2 className="detail-title">{notice.title}</h2>
-          <p className="detail-date">작성일: {notice.date}</p>
+
+        <div className="notice-modal-header">
+          <h2 id="notice-modal-title" className="notice-modal-title">
+            {notice.title}
+          </h2>
+          <p className="notice-modal-date">작성일: {notice.date}</p>
         </div>
-        <div 
-          className="detail-content"
+
+        <div
+          className="notice-modal-body"
           dangerouslySetInnerHTML={{ __html: notice.content }}
         />
-        <button 
-          className="close-detail-btn"
-          onClick={onClose}
-        >
-          닫기
-        </button>
+
+        <div className="notice-modal-footer">
+          <button type="button" className="notice-modal-close-btn" onClick={onClose}>
+            닫기
+          </button>
+        </div>
       </div>
     </div>
   )

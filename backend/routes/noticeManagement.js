@@ -3,6 +3,41 @@ const express = require('express');
 const router = express.Router();
 const { getConnection, sql } = require('../config/database');
 
+let noticeTableReady = false;
+
+async function ensureNoticeTable(pool) {
+  if (noticeTableReady) return;
+  await pool.request().query(`
+    IF COL_LENGTH('tb_notice', 'contents') IS NOT NULL
+    BEGIN
+      DECLARE @contentsType NVARCHAR(128);
+      SELECT @contentsType = DATA_TYPE + CASE
+        WHEN CHARACTER_MAXIMUM_LENGTH IS NULL THEN '(max)'
+        WHEN CHARACTER_MAXIMUM_LENGTH = -1 THEN '(max)'
+        ELSE '(' + CAST(CHARACTER_MAXIMUM_LENGTH AS VARCHAR(20)) + ')'
+      END
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME = 'tb_notice' AND COLUMN_NAME = 'contents';
+
+      IF @contentsType NOT IN ('nvarchar(max)', 'ntext')
+        ALTER TABLE tb_notice ALTER COLUMN contents NVARCHAR(MAX) NULL;
+    END
+  `);
+  noticeTableReady = true;
+}
+
+function normalizeNoticePayload(body = {}) {
+  return {
+    gubun: String(body.gubun || '').trim() || null,
+    title: String(body.title || '').trim(),
+    contents: String(body.contents || ''),
+    fix_yn: String(body.fix_yn || 'N').trim() || 'N',
+    notice_type: String(body.notice_type || '').trim() || null,
+    popup_yn: String(body.popup_yn || 'N').trim() || 'N',
+    use_yn: String(body.use_yn || 'Y').trim() || 'Y'
+  };
+}
+
 // 공지 목록 조회 API (페이징)
 router.get('/list', async (req, res) => {
   try {
@@ -193,16 +228,25 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     const pool = await getConnection();
+    await ensureNoticeTable(pool);
     
     // seq는 IDENTITY 컬럼으로 자동 증가되므로 INSERT에서 제외
+    const payload = normalizeNoticePayload(req.body);
+    if (!payload.title || !payload.contents) {
+      return res.status(400).json({
+        success: false,
+        message: '제목과 내용을 입력해주세요.'
+      });
+    }
+
     const result = await pool.request()
-      .input('gubun', sql.NVarChar, gubun)
-      .input('title', sql.NVarChar, title)
-      .input('contents', sql.NVarChar, contents)
-      .input('fix_yn', sql.NVarChar, fix_yn || 'N')
-      .input('notice_type', sql.NVarChar, notice_type)
-      .input('popup_yn', sql.NVarChar, popup_yn || 'N')
-      .input('use_yn', sql.NVarChar, use_yn || 'Y')
+      .input('gubun', sql.NVarChar, payload.gubun)
+      .input('title', sql.NVarChar, payload.title)
+      .input('contents', sql.NVarChar(sql.MAX), payload.contents)
+      .input('fix_yn', sql.NVarChar, payload.fix_yn)
+      .input('notice_type', sql.NVarChar, payload.notice_type)
+      .input('popup_yn', sql.NVarChar, payload.popup_yn)
+      .input('use_yn', sql.NVarChar, payload.use_yn)
       .query(`
         INSERT INTO tb_notice (gubun, title, contents, fix_yn, notice_type, popup_yn, use_yn, input_date)
         VALUES (@gubun, @title, @contents, @fix_yn, @notice_type, @popup_yn, @use_yn, GETDATE());
@@ -218,9 +262,13 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('공지 추가 오류:', error);
+    const message = String(error.message || '');
+    const isTruncate = message.includes('truncated');
     res.status(500).json({
       success: false,
-      message: '공지 추가 중 오류가 발생했습니다.',
+      message: isTruncate
+        ? '공지 내용이 너무 깁니다. 내용 길이를 줄여주세요.'
+        : '공지 추가 중 오류가 발생했습니다.',
       error: error.message
     });
   }
@@ -236,16 +284,25 @@ router.put('/:seq', async (req, res) => {
     } = req.body;
     
     const pool = await getConnection();
+    await ensureNoticeTable(pool);
+
+    const payload = normalizeNoticePayload(req.body);
+    if (!payload.title || !payload.contents) {
+      return res.status(400).json({
+        success: false,
+        message: '제목과 내용을 입력해주세요.'
+      });
+    }
     
     await pool.request()
       .input('seq', sql.Int, seq)
-      .input('gubun', sql.NVarChar, gubun)
-      .input('title', sql.NVarChar, title)
-      .input('contents', sql.NVarChar, contents)
-      .input('fix_yn', sql.NVarChar, fix_yn)
-      .input('notice_type', sql.NVarChar, notice_type)
-      .input('popup_yn', sql.NVarChar, popup_yn)
-      .input('use_yn', sql.NVarChar, use_yn)
+      .input('gubun', sql.NVarChar, payload.gubun)
+      .input('title', sql.NVarChar, payload.title)
+      .input('contents', sql.NVarChar(sql.MAX), payload.contents)
+      .input('fix_yn', sql.NVarChar, payload.fix_yn)
+      .input('notice_type', sql.NVarChar, payload.notice_type)
+      .input('popup_yn', sql.NVarChar, payload.popup_yn)
+      .input('use_yn', sql.NVarChar, payload.use_yn)
       .query(`
         UPDATE tb_notice
         SET 

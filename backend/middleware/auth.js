@@ -6,7 +6,7 @@ const authMiddleware = (req, res, next) => {
   }
 
   // 세션에 사용자 정보가 있는지 확인
-  const sessionUserId = req.headers['x-user-id'];
+  const sessionUserId = String(req.headers['x-user-id'] || '').trim();
   
   if (!sessionUserId) {
     return res.status(401).json({
@@ -17,7 +17,8 @@ const authMiddleware = (req, res, next) => {
 
   // 요청한 userId와 세션 userId가 일치하는지 확인 (관리자는 제외)
   const requestedUserId = req.params.userId;
-  const isAdmin = req.headers['x-user-type'] === 'A';
+  const userType = String(req.headers['x-user-type'] || '').trim();
+  const isAdmin = userType === 'ADMIN' || userType === 'A' || userType === '관리자';
 
   if (requestedUserId && requestedUserId !== sessionUserId && !isAdmin) {
     return res.status(403).json({

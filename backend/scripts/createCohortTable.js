@@ -16,11 +16,11 @@ async function createTable() {
           start_date        DATE          NULL,
           end_date          DATE          NULL,
           signup_fee        INT           NOT NULL DEFAULT 0,
-          sub_base_start    DATE          NULL,
-          sub_base_end      DATE          NULL,
+          sub_base_start    INT           NULL,
+          sub_base_end      INT           NULL,
           sub_fee           INT           NOT NULL DEFAULT 0,
-          sub_notice_start  DATE          NULL,
-          sub_notice_end    DATE          NULL,
+          sub_notice_start  INT           NULL,
+          sub_notice_end    INT           NULL,
           created_at        DATETIME      DEFAULT GETDATE(),
           updated_at        DATETIME      NULL
         );
