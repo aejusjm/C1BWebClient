@@ -91,7 +91,7 @@ async function getSmartStoreToken() {
   const hashed = bcrypt.hashSync(`${clientId}_${timestamp}`, clientSecret);
   const clientSecretSign = Buffer.from(hashed, 'utf8').toString('base64');
 
-  const query = new URLSearchParams({
+  const form = new URLSearchParams({
     client_id: clientId,
     timestamp: String(timestamp),
     client_secret_sign: clientSecretSign,
@@ -99,14 +99,15 @@ async function getSmartStoreToken() {
     type: 'SELF'
   });
 
-  const url = `${SMARTSTORE_API_BASE}/external/v1/oauth2/token?${query.toString()}`;
-  console.log('토큰 발급 URL:', url);
+  const url = `${SMARTSTORE_API_BASE}/external/v1/oauth2/token`;
+  console.log('토큰 발급 요청 body:', form.toString().replace(/client_secret_sign=[^&]+/, 'client_secret_sign=***'));
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
-    }
+    },
+    body: form.toString()
   });
 
   const responseText = await response.text();

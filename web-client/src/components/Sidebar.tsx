@@ -18,7 +18,7 @@ interface SidebarProps {
   userInfo: UserInfo
 }
 
-type CollapsibleMenuKey = 'admin' | 'stats' | 'payment' | 'fake' | 'settings'
+type CollapsibleMenuKey = 'admin' | 'allProducts' | 'stats' | 'payment' | 'fake' | 'settings'
 
 const MENU_GROUP_ITEMS: Record<CollapsibleMenuKey, string[]> = {
   admin: [
@@ -27,15 +27,18 @@ const MENU_GROUP_ITEMS: Record<CollapsibleMenuKey, string[]> = {
     'cohort-management',
     'notice-management',
     'detail-page-management',
-    'deleted-products',
     'batch-log',
     'server-management'
+  ],
+  allProducts: [
+    'all-products',
+    'upload-product-stats',
+    'deleted-products'
   ],
   stats: [
     'user-sales-stats',
     'daily-sales-stats',
-    'mobile-sales-stats',
-    'upload-product-stats'
+    'mobile-sales-stats'
   ],
   payment: [
     'subscription-management',
@@ -67,6 +70,7 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
 
   const [expandedMenus, setExpandedMenus] = useState<Record<CollapsibleMenuKey, boolean>>({
     admin: true,
+    allProducts: true,
     stats: true,
     payment: true,
     fake: true,
@@ -312,12 +316,6 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   <span className="submenu-icon">📄</span> 상세페이지관리
                 </li>
                 <li 
-                  className={activeMenu === 'deleted-products' ? 'active' : ''}
-                  onClick={() => handleMenuClick('deleted-products')}
-                >
-                  <span className="submenu-icon">🗑️</span> 삭제상품관리
-                </li>
-                <li 
                   className={activeMenu === 'batch-log' ? 'active' : ''}
                   onClick={() => handleMenuClick('batch-log')}
                 >
@@ -328,6 +326,40 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   onClick={() => handleMenuClick('server-management')}
                 >
                   <span className="submenu-icon">🖥️</span> 서버관리
+                </li>
+              </ul>
+              )}
+            </li>
+          )}
+          {/* 전체상품관리 메뉴 - 관리자만 표시 */}
+          {isAdmin && (
+            <li className={`menu-parent ${expandedMenus.allProducts ? 'expanded' : 'collapsed'}`}>
+              <div
+                className="menu-title menu-title-toggle"
+                onClick={() => toggleMenu('allProducts')}
+              >
+                <span className="menu-icon">📦</span> 전체상품관리
+                <span className="menu-chevron">{expandedMenus.allProducts ? '▼' : '▶'}</span>
+              </div>
+              {expandedMenus.allProducts && (
+              <ul className="submenu">
+                <li
+                  className={activeMenu === 'all-products' ? 'active' : ''}
+                  onClick={() => handleMenuClick('all-products')}
+                >
+                  <span className="submenu-icon">📦</span> 상품전체관리
+                </li>
+                <li
+                  className={activeMenu === 'upload-product-stats' ? 'active' : ''}
+                  onClick={() => handleMenuClick('upload-product-stats')}
+                >
+                  <span className="submenu-icon">📊</span> 상품등록 현황
+                </li>
+                <li 
+                  className={activeMenu === 'deleted-products' ? 'active' : ''}
+                  onClick={() => handleMenuClick('deleted-products')}
+                >
+                  <span className="submenu-icon">🗑️</span> 삭제상품관리
                 </li>
               </ul>
               )}
@@ -362,12 +394,6 @@ function Sidebar({ activeMenu, onMenuChange, onLogout, userInfo }: SidebarProps)
                   onClick={() => handleMenuClick('mobile-sales-stats')}
                 >
                   <span className="submenu-icon">📱</span> 사용자별 매출(모바일)
-                </li>
-                <li 
-                  className={activeMenu === 'upload-product-stats' ? 'active' : ''}
-                  onClick={() => handleMenuClick('upload-product-stats')}
-                >
-                  <span className="submenu-icon">📦</span> 상품등록 현황
                 </li>
               </ul>
               )}

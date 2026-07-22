@@ -5,10 +5,10 @@ const router = express.Router();
 const { getConnection, sql } = require('../config/database');
 const { cancelPayment } = require('../services/tossPayments');
 
-// 구독결제 목록 조회 (검색: 사용자, 결제일자 범위)
+// 구독결제 목록 조회 (검색: 사용자, 결제일자 범위, 결제상태)
 router.get('/', async (req, res) => {
   try {
-    const { userKeyword, startDate, endDate, cohortSeq } = req.query;
+    const { userKeyword, startDate, endDate, cohortSeq, status } = req.query;
     const pool = await getConnection();
 
     const request = pool.request();
@@ -34,6 +34,14 @@ router.get('/', async (req, res) => {
       if (Number.isFinite(parsedCohortSeq)) {
         request.input('cohortSeq', sql.Int, parsedCohortSeq);
         whereClause += ' AND u.cohort_seq = @cohortSeq';
+      }
+    }
+    if (status && String(status).trim()) {
+      const allowedStatuses = ['DONE', 'FAILED', 'CANCELED', 'PARTIAL_CANCELED'];
+      const statusValue = String(status).trim();
+      if (allowedStatuses.includes(statusValue)) {
+        request.input('status', sql.NVarChar, statusValue);
+        whereClause += ' AND p.status = @status';
       }
     }
 
@@ -77,6 +85,49 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 현금결제 건 취소(결제 이력 삭제)
+router.delete('/:seq/cash', async (req, res) => {
+  try {
+    const { seq } = req.params;
+    const pool = await getConnection();
+
+    const paymentResult = await pool.request()
+      .input('seq', sql.Int, seq)
+      .query(`
+        SELECT seq, status, card_name, order_id
+        FROM tb_subscription_payment
+        WHERE seq = @seq
+      `);
+
+    if (paymentResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: '결제 내역을 찾을 수 없습니다.' });
+    }
+
+    const payment = paymentResult.recordset[0];
+    const isCash =
+      payment.card_name === '현금' ||
+      payment.status === '현금결제' ||
+      String(payment.order_id || '').startsWith('CASH_');
+
+    if (!isCash) {
+      return res.status(400).json({ success: false, message: '현금결제 건만 취소할 수 있습니다.' });
+    }
+
+    if (payment.status !== 'DONE' && payment.status !== '현금결제') {
+      return res.status(400).json({ success: false, message: '취소할 수 없는 결제 상태입니다.' });
+    }
+
+    await pool.request()
+      .input('seq', sql.Int, seq)
+      .query(`DELETE FROM tb_subscription_payment WHERE seq = @seq`);
+
+    res.json({ success: true, message: '현금결제가 취소되었습니다.' });
+  } catch (error) {
+    console.error('현금결제 취소 오류:', error);
+    res.status(500).json({ success: false, message: '현금결제 취소 중 오류가 발생했습니다.' });
+  }
+});
+
 // 환불(부분/전액) 처리 - Toss 결제 취소 연동
 router.post('/:seq/refund', async (req, res) => {
   try {
@@ -96,7 +147,7 @@ router.post('/:seq/refund', async (req, res) => {
     const paymentResult = await pool.request()
       .input('seq', sql.Int, seq)
       .query(`
-        SELECT seq, payment_key, amount, refund_amount, status
+        SELECT seq, payment_key, amount, refund_amount, status, card_name, order_id
         FROM tb_subscription_payment
         WHERE seq = @seq
       `);
@@ -112,6 +163,9 @@ router.post('/:seq/refund', async (req, res) => {
     }
     if (payment.status === 'FAILED') {
       return res.status(400).json({ success: false, message: '실패한 결제는 환불할 수 없습니다.' });
+    }
+    if (payment.status === '현금결제' || payment.card_name === '현금' || String(payment.order_id || '').startsWith('CASH_')) {
+      return res.status(400).json({ success: false, message: '현금결제 건은 카드 환불 처리를 할 수 없습니다.' });
     }
     if (payment.status === 'CANCELED') {
       return res.status(400).json({ success: false, message: '이미 전액 환불된 결제입니다.' });

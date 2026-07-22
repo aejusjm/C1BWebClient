@@ -6,15 +6,17 @@ export const ADMIN_MENUS = [
   'cohort-management',
   'notice-management',
   'detail-page-management',
-  'deleted-products',
   'batch-log',
   'server-management',
   'banned-words',
+  // 전체상품관리
+  'all-products',
+  'upload-product-stats',
+  'deleted-products',
   // 통계통합관리
   'user-sales-stats',
   'daily-sales-stats',
   'mobile-sales-stats',
-  'upload-product-stats',
   // 구독 및 결제관리
   'subscription-management',
   'signup-payment-management',

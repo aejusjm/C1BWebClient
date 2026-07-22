@@ -230,13 +230,20 @@ router.get('/products/:userId', async (req, res) => {
 // 삭제요청 API
 router.post('/delete-request', async (req, res) => {
   try {
-    const { user_id, gu_seq, biz_idx, del_reason, del_type } = req.body;
+    const { user_id, gu_seq, biz_idx, market_type, del_reason, del_type } = req.body;
+    const marketType = String(market_type || '').trim().toUpperCase();
 
     // 필수 파라미터 검증
-    if (!user_id || !gu_seq || !del_reason || !del_type) {
+    if (!user_id || !gu_seq || !marketType || !del_reason || !del_type) {
       return res.status(400).json({
         success: false,
         message: '필수 파라미터가 누락되었습니다.'
+      });
+    }
+    if (!['SS', 'CP', 'NONE'].includes(marketType)) {
+      return res.status(400).json({
+        success: false,
+        message: '마켓 정보가 올바르지 않습니다.'
       });
     }
 
@@ -248,13 +255,17 @@ router.post('/delete-request', async (req, res) => {
         user_id,
         gu_seq,
         biz_idx,
+        market_type,
         del_reason,
         del_type,
         input_date
-      ) VALUES (
+      )
+      OUTPUT INSERTED.seq
+      VALUES (
         @user_id,
         @gu_seq,
         @biz_idx,
+        @market_type,
         @del_reason,
         @del_type,
         GETDATE()
@@ -269,6 +280,7 @@ router.post('/delete-request', async (req, res) => {
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
+    let deleteRequestSeq = null;
 
     try {
       const updateResult = await new sql.Request(transaction)
@@ -277,6 +289,7 @@ router.post('/delete-request', async (req, res) => {
         .query(`
           UPDATE tb_good_user
           SET use_yn = N'N'
+          OUTPUT INSERTED.gm_seq
           WHERE seq = @gu_seq AND user_id = @user_id
         `);
 
@@ -289,13 +302,29 @@ router.post('/delete-request', async (req, res) => {
         });
       }
 
+      const gmSeq = updateResult.recordset?.[0]?.gm_seq;
+      if (!Number.isFinite(Number(gmSeq))) {
+        throw new Error('상품 마스터 번호(gm_seq)를 확인할 수 없습니다.');
+      }
+
+      // 삭제사유와 관계없이 해당 마스터 상품을 비활성화한다.
       await new sql.Request(transaction)
+        .input('gm_seq', sql.Int, Number(gmSeq))
+        .query(`
+          UPDATE tb_good_master
+          SET use_yn = N'N'
+          WHERE seq = @gm_seq
+        `);
+
+      const insertResult = await new sql.Request(transaction)
         .input('user_id', sql.NVarChar, user_id)
         .input('gu_seq', sql.Int, gu_seq)
         .input('biz_idx', sql.NVarChar, bizIdxStr)
+        .input('market_type', sql.NVarChar, marketType)
         .input('del_reason', sql.NVarChar, del_reason)
         .input('del_type', sql.NVarChar, del_type)
         .query(insertQuery);
+      deleteRequestSeq = insertResult.recordset?.[0]?.seq ?? null;
 
       await transaction.commit();
     } catch (txErr) {
@@ -309,7 +338,10 @@ router.post('/delete-request', async (req, res) => {
 
     res.json({
       success: true,
-      message: '삭제요청이 완료되었습니다.'
+      message: '삭제요청이 완료되었습니다.',
+      data: {
+        deleteRequestSeq
+      }
     });
   } catch (error) {
     console.error('삭제요청 저장 오류:', error);

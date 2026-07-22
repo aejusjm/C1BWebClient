@@ -68,6 +68,38 @@
   box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
 }
 
+.admin-pay-method-group {
+  display: flex;
+  gap: 12px;
+}
+
+.admin-pay-method-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+
+.admin-pay-method-option.active {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.admin-pay-method-option input {
+  margin: 0;
+}
+
 .admin-pay-type-group {
   display: flex;
   gap: 12px;
@@ -105,6 +137,13 @@
   font-size: 13px;
   color: #888;
   line-height: 1.5;
+}
+
+.admin-pay-cash-note {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
 }
 
 .admin-pay-actions {
@@ -147,6 +186,14 @@
   box-shadow: 0 8px 16px rgba(37, 99, 235, 0.35);
 }
 
+.admin-pay-submit-btn.cash {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 55%, #166534 100%);
+}
+
+.admin-pay-submit-btn.cash:hover:not(:disabled) {
+  box-shadow: 0 8px 16px rgba(22, 163, 74, 0.35);
+}
+
 .admin-pay-reset-btn:disabled,
 .admin-pay-submit-btn:disabled {
   opacity: 0.6;
@@ -163,6 +210,7 @@
     padding: 24px 18px;
   }
 
+  .admin-pay-method-group,
   .admin-pay-type-group {
     flex-direction: column;
   }

@@ -9,6 +9,12 @@ import './ProductPage.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const API_URL = `${API_BASE}/api/products`
+const DELETE_PRODUCT_API_URL = `${API_BASE}/api/delete-products`
+const RELATED_SUSPENSION_REASONS = new Set([
+  '지재권 신고 상품',
+  '유통경로 요청 상품',
+  '불법(통관불가) 상품'
+])
 
 /** 상품 썸네일 CDN: https://c1b.co.kr/CDN/{base_folder}/{item_id}/{main_img_url} */
 const PRODUCT_CDN_BASE = 'https://c1b.co.kr/CDN'
@@ -66,8 +72,15 @@ function ProductPage() {
   // 삭제요청 모달 상태
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [deleteMarket, setDeleteMarket] = useState('')
   const [deleteReason, setDeleteReason] = useState('')
   const [customReason, setCustomReason] = useState('')
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteProgress, setDeleteProgress] = useState<{
+    step: string
+    message: string
+    previousResult?: string
+  } | null>(null)
   // 이미지 로드 오류 상태
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
 
@@ -318,6 +331,7 @@ function ProductPage() {
   // 삭제요청 모달 열기
   const openDeleteModal = (product: Product) => {
     setSelectedProduct(product)
+    setDeleteMarket('')
     setDeleteReason('')
     setCustomReason('')
     setShowDeleteModal(true)
@@ -327,6 +341,7 @@ function ProductPage() {
   const closeDeleteModal = () => {
     setShowDeleteModal(false)
     setSelectedProduct(null)
+    setDeleteMarket('')
     setDeleteReason('')
     setCustomReason('')
   }
@@ -334,6 +349,11 @@ function ProductPage() {
   // 삭제요청 제출
   const handleDeleteRequest = async () => {
     if (!selectedProduct) return
+
+    if (!deleteMarket) {
+      await showAlert('마켓을 선택해주세요.')
+      return
+    }
 
     if (!deleteReason) {
       await showAlert('삭제사유를 선택해주세요.')
@@ -348,6 +368,14 @@ function ProductPage() {
 
     try {
       const finalReason = deleteReason === '기타' ? customReason.trim() : deleteReason
+      const stopRelatedProducts = RELATED_SUSPENSION_REASONS.has(finalReason)
+      const totalSteps = stopRelatedProducts ? 4 : 3
+
+      setDeleteSubmitting(true)
+      setDeleteProgress({
+        step: `1 / ${totalSteps}`,
+        message: '삭제요청을 저장하는 중...'
+      })
 
       const response = await fetch(`${API_URL}/delete-request`, {
         method: 'POST',
@@ -358,23 +386,96 @@ function ProductPage() {
           user_id: userInfo.userId,
           gu_seq: selectedProduct.seq,
           biz_idx: selectedProduct.biz_idx,
+          market_type: deleteMarket,
           del_reason: finalReason,
           del_type: '즉시삭제'
         })
       })
 
-      const result = await response.json()
+      const result = await response.json().catch(() => null)
 
-      if (result.success) {
-        await showAlert('삭제요청이 완료되었습니다.')
-        closeDeleteModal()
-        loadProducts()
-      } else {
-        await showAlert(result.message || '삭제요청 중 오류가 발생했습니다.')
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || `삭제요청 실패 (HTTP ${response.status})`)
       }
+
+      const deleteRequestSeq = Number(result.data?.deleteRequestSeq)
+      if (!Number.isFinite(deleteRequestSeq)) {
+        throw new Error('삭제요청 번호를 확인할 수 없습니다.')
+      }
+
+      const callStopSale = async (market: 'smartstore' | 'coupang') => {
+        const stopResponse = await fetch(
+          `${DELETE_PRODUCT_API_URL}/${deleteRequestSeq}/stop-sale/${market}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+        const stopResult = await stopResponse.json().catch(() => null)
+        if (!stopResponse.ok || !stopResult?.success) {
+          return stopResult?.message || `판매중지 요청 실패 (HTTP ${stopResponse.status})`
+        }
+        return null
+      }
+
+      setDeleteProgress({
+        step: `2 / ${totalSteps}`,
+        message: '내 상품의 스마트스토어 판매중지 처리 중...',
+        previousResult: '삭제요청: 저장 완료'
+      })
+      const ssError = await callStopSale('smartstore')
+      const ssResult = ssError ? `실패 - ${ssError}` : '판매중지 완료'
+
+      setDeleteProgress({
+        step: `3 / ${totalSteps}`,
+        message: '내 상품의 쿠팡 판매중지 처리 중...',
+        previousResult: `내 상품 스마트스토어: ${ssResult}`
+      })
+      const cpError = await callStopSale('coupang')
+      const cpResult = cpError ? `실패 - ${cpError}` : '판매중지 완료'
+
+      let relatedResult: string | null = null
+      if (stopRelatedProducts) {
+        setDeleteProgress({
+          step: '4 / 4',
+          message: '동일 상품의 다른 사용자 상품을 판매중지 처리 중...',
+          previousResult: `내 상품 - 스마트스토어: ${ssResult}, 쿠팡: ${cpResult}`
+        })
+
+        const relatedResponse = await fetch(
+          `${DELETE_PRODUCT_API_URL}/${deleteRequestSeq}/stop-sale/related-products`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+        const relatedData = await relatedResponse.json().catch(() => null)
+        relatedResult =
+          relatedResponse.ok && relatedData?.success
+            ? '일괄 처리 완료'
+            : `실패 - ${relatedData?.message || `HTTP ${relatedResponse.status}`}`
+      }
+
+      setDeleteProgress(null)
+      await showAlert(
+        [
+          '삭제요청: 저장 완료',
+          `내 상품 스마트스토어: ${ssResult}`,
+          `내 상품 쿠팡: ${cpResult}`,
+          ...(relatedResult ? [`다른 사용자 상품: ${relatedResult}`] : [])
+        ].join('\n')
+      )
+      closeDeleteModal()
+      await loadProducts()
     } catch (error) {
       console.error('삭제요청 오류:', error)
-      await showAlert('삭제요청 중 오류가 발생했습니다.')
+      setDeleteProgress(null)
+      await showAlert(
+        error instanceof Error ? error.message : '삭제요청 중 오류가 발생했습니다.'
+      )
+    } finally {
+      setDeleteSubmitting(false)
+      setDeleteProgress(null)
     }
   }
 
@@ -838,13 +939,30 @@ function ProductPage() {
               <div className="delete-modal-warning" role="note">
                 <p className="delete-modal-warning-title">주의</p>
                 <p className="delete-modal-warning-text">
-                  스마트스토어와 쿠팡에 해당 상품이 바로 삭제 됩니다.
+                  삭제 요청 시 스마트스토어와 쿠팡에 상품이 판매중지 됩니다.
+                  <br />
+                  소명 요청 관련 상품여부를 관리자가 확인 후 삭제 처리 진행 됩니다.
                 </p>
+              </div>
+
+              {/* 마켓 */}
+              <div className="delete-form-group">
+                <label className="delete-form-label emphasis">마켓 (소명 요청 받은 마켓 선택)</label>
+                <select
+                  className="delete-select"
+                  value={deleteMarket}
+                  onChange={(e) => setDeleteMarket(e.target.value)}
+                >
+                  <option value="">선택하기</option>
+                  <option value="SS">스마트스토어</option>
+                  <option value="CP">쿠팡</option>
+                  <option value="NONE">없음</option>
+                </select>
               </div>
 
               {/* 삭제사유 */}
               <div className="delete-form-group">
-                <label className="delete-form-label">삭제사유</label>
+                <label className="delete-form-label emphasis">삭제사유</label>
                 <select
                   className="delete-select"
                   value={deleteReason}
@@ -856,9 +974,13 @@ function ProductPage() {
                   }}
                 >
                   <option value="">선택하기</option>
-                  <option value="브랜드 상품">브랜드 상품</option>
-                  <option value="판매금지 상품">판매금지 상품</option>
-                  <option value="상품명 수정">상품명 수정</option>
+                  <option value="지재권 신고 상품">지재권 신고 상품</option>
+                  <option value="유통경로 요청 상품">유통경로 요청 상품</option>
+                  <option value="불법(통관불가) 상품">불법(통관불가) 상품</option>
+                  <option value="역마진 상품">역마진 상품</option>
+                  <option value="품절 상품">품절 상품</option>
+                  <option value="상품명과 상품내용 다른 상품">상품명과 상품내용 다른 상품</option>
+                  <option value="KC인증 요청 상품">KC인증 요청 상품</option>
                   <option value="기타">기타</option>
                 </select>
               </div>
@@ -879,13 +1001,39 @@ function ProductPage() {
             </div>
 
             <div className="delete-modal-footer">
-              <button className="delete-modal-btn cancel" onClick={closeDeleteModal}>
+              <button
+                className="delete-modal-btn cancel"
+                onClick={closeDeleteModal}
+                disabled={deleteSubmitting}
+              >
                 취소
               </button>
-              <button className="delete-modal-btn submit" onClick={handleDeleteRequest}>
-                요청
+              <button
+                className="delete-modal-btn submit"
+                onClick={handleDeleteRequest}
+                disabled={deleteSubmitting}
+              >
+                {deleteSubmitting ? '처리 중...' : '요청'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제요청 및 마켓 판매중지 진행상태 */}
+      {deleteProgress && (
+        <div className="product-delete-progress-overlay" role="status" aria-live="polite">
+          <div className="product-delete-progress-modal">
+            <div className="product-delete-progress-spinner" />
+            <strong>삭제요청 처리 중</strong>
+            <span className="product-delete-progress-step">{deleteProgress.step}</span>
+            <p>{deleteProgress.message}</p>
+            {deleteProgress.previousResult && (
+              <div className="product-delete-progress-result">
+                ✓ {deleteProgress.previousResult}
+              </div>
+            )}
+            <small>처리가 완료될 때까지 잠시만 기다려주세요.</small>
           </div>
         </div>
       )}

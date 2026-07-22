@@ -24,6 +24,57 @@ function isValidOnceOrderId(orderId, userId) {
   return String(orderId || '').startsWith(`ADM_ONCE_${userId}_`);
 }
 
+const CASH_PLANS = new Set(['BASIC', 'EXTEND', 'EXTRA']);
+const CASH_CARD_NAME = '현금';
+
+function generateCashOrderId(userId) {
+  const kst = toKoreaDateTimeString(new Date());
+  const [datePart, timePart] = kst.split(' ');
+  const yyyyMMdd = datePart.replace(/-/g, '');
+  const hhmmss = timePart.replace(/:/g, '');
+  return `CASH_${userId}_${yyyyMMdd}_${hhmmss}`;
+}
+
+async function upsertCashBasicSubscription(pool, { userId, planType, amount }) {
+  const existing = await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .query(`
+      SELECT TOP 1 seq, customer_key
+      FROM tb_subscription
+      WHERE user_id = @user_id
+      ORDER BY CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END, seq DESC
+    `);
+
+  if (existing.recordset.length > 0) {
+    const row = existing.recordset[0];
+    await pool.request()
+      .input('seq', sql.Int, row.seq)
+      .input('plan_type', sql.NVarChar, planType)
+      .input('amount', sql.Int, amount)
+      .query(`
+        UPDATE tb_subscription
+        SET plan_type = @plan_type,
+            amount = @amount,
+            status = 'ACTIVE',
+            next_pay_date = DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())),
+            updated_at = GETDATE()
+        WHERE seq = @seq
+      `);
+    return;
+  }
+
+  const customerKey = `cash_cus_${userId}_${Date.now()}`;
+  await pool.request()
+    .input('user_id', sql.NVarChar, userId)
+    .input('customer_key', sql.NVarChar, customerKey)
+    .input('plan_type', sql.NVarChar, planType)
+    .input('amount', sql.Int, amount)
+    .query(`
+      INSERT INTO tb_subscription (user_id, customer_key, billing_key, plan_type, amount, status, next_pay_date)
+      VALUES (@user_id, @customer_key, NULL, @plan_type, @amount, 'ACTIVE', DATEADD(MONTH, 1, CONVERT(DATE, GETDATE())))
+    `);
+}
+
 let planTypeColumnsReady = false;
 
 // 결제명 저장을 위해 plan_type 컬럼 길이 확보
@@ -134,14 +185,26 @@ async function insertFailedPayment(pool, { userId, orderId, planType, amount, er
     `);
 }
 
-// 사용자 콤보용 목록
+// 사용자 콤보용 목록 (기수 필터 지원)
 router.get('/users', async (req, res) => {
   try {
+    const { cohortSeq } = req.query;
     const pool = await getConnection();
-    const result = await pool.request().query(`
-      SELECT user_id, user_name
+    const request = pool.request();
+    let whereClause = `WHERE ISNULL(user_type, '') <> N'관리자'`;
+
+    if (cohortSeq !== undefined && cohortSeq !== null && String(cohortSeq).trim() !== '') {
+      const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+      if (Number.isFinite(parsedCohortSeq)) {
+        request.input('cohort_seq', sql.Int, parsedCohortSeq);
+        whereClause += ' AND cohort_seq = @cohort_seq';
+      }
+    }
+
+    const result = await request.query(`
+      SELECT user_id, user_name, cohort_seq
       FROM tb_user
-      WHERE ISNULL(user_type, '') <> N'관리자'
+      ${whereClause}
       ORDER BY user_name, user_id
     `);
     res.json({ success: true, data: result.recordset });
@@ -355,6 +418,97 @@ router.post('/confirm-general', async (req, res) => {
   } catch (error) {
     console.error('관리자 일반결제 승인 오류:', error);
     res.status(500).json({ success: false, message: error.message || '일반 결제 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+// 현금 결제 등록 (토스 미사용)
+router.post('/confirm-cash', async (req, res) => {
+  try {
+    const { userId, cohortSeq, plan, amount } = req.body;
+    const payAmount = parseInt(amount, 10);
+    const planInput = String(plan || '').trim();
+    const planTypeUpper = planInput.toUpperCase();
+    const parsedCohortSeq = parseInt(String(cohortSeq), 10);
+
+    if (!userId || !Number.isFinite(parsedCohortSeq) || !planInput || !payAmount || payAmount <= 0) {
+      return res.status(400).json({ success: false, message: '기수, 사용자, 플랜, 결제금액을 올바르게 입력해주세요.' });
+    }
+
+    const pool = await getConnection();
+    await ensurePlanTypeWidth(pool);
+
+    const userResult = await pool.request()
+      .input('user_id', sql.NVarChar, userId)
+      .input('cohort_seq', sql.Int, parsedCohortSeq)
+      .query(`
+        SELECT TOP 1 user_id, user_name, cohort_seq
+        FROM tb_user
+        WHERE user_id = @user_id
+      `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    const user = userResult.recordset[0];
+    if (Number(user.cohort_seq) !== parsedCohortSeq) {
+      return res.status(400).json({ success: false, message: '선택한 기수에 속하지 않는 사용자입니다.' });
+    }
+
+    const cohortResult = await pool.request()
+      .input('cohort_seq', sql.Int, parsedCohortSeq)
+      .query(`SELECT TOP 1 seq, cohort_name FROM tb_cohort WHERE seq = @cohort_seq`);
+
+    if (cohortResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: '기수를 찾을 수 없습니다.' });
+    }
+
+    const orderId = generateCashOrderId(userId);
+    const paidAt = new Date();
+    const rawResponse = JSON.stringify({
+      paymentMethod: 'CASH',
+      cohortSeq: parsedCohortSeq,
+      cohortName: cohortResult.recordset[0].cohort_name,
+      plan: planInput,
+      userId,
+      userName: user.user_name || userId,
+      amount: payAmount,
+      registeredAt: toKoreaDateTimeString(paidAt)
+    });
+
+    await insertPayment(pool, {
+      userId,
+      orderId,
+      paymentKey: null,
+      planType: planInput,
+      amount: payAmount,
+      status: 'DONE',
+      paidAt,
+      rawResponse,
+      cardName: CASH_CARD_NAME,
+      cardNumber: null
+    });
+
+    if (planTypeUpper === 'BASIC' || planTypeUpper === 'EXTEND') {
+      await extendUserEndDate(pool, userId);
+    }
+    if (planTypeUpper === 'BASIC') {
+      await upsertCashBasicSubscription(pool, { userId, planType: planInput, amount: payAmount });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        orderId,
+        status: 'DONE',
+        plan: planInput,
+        amount: payAmount,
+        cardName: CASH_CARD_NAME
+      }
+    });
+  } catch (error) {
+    console.error('관리자 현금결제 등록 오류:', error);
+    res.status(500).json({ success: false, message: error.message || '현금 결제 등록 중 오류가 발생했습니다.' });
   }
 });
 

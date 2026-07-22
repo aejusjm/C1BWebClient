@@ -562,9 +562,28 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
   // 스마트스토어 개별 저장
   const handleSmartStoreSave = async (index: number) => {
     const store = smartStores[index]
-    
-    // 사용자종류가 '가구매'가 아닌 경우에만 연동 테스트 수행
-    if (marketUserType !== '가구매') {
+    const marketAccount = String(store.id || '').trim()
+    const clientId = String(store.appId || '').trim()
+    const clientSecret = String(store.appSecret || '').trim()
+    const storeName = String(store.storeName || '').trim()
+    const storeId = String(store.storeId || '').trim()
+    const password = String(store.password || '').trim()
+
+    // 사용(Y)으로 저장할 때만 연동 필수값/토큰 테스트 검사
+    const needsApiCheck = marketUserType !== '가구매' && store.useYn !== 'N'
+
+    if (needsApiCheck) {
+      if (!marketAccount || !clientId || !clientSecret) {
+        await showAlert('아이디, APP ID, APP 시크릿을 모두 입력해주세요.')
+        return
+      }
+      if (!/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{22,}/.test(clientSecret)) {
+        await showAlert(
+          'APP 시크릿 형식이 올바르지 않습니다.\n스마트스토어 커머스API에서 발급된 client_secret 값($2a$... 형태)을 입력해주세요.'
+        )
+        return
+      }
+
       // 연동 테스트 (토큰 발급 성공 여부)
       try {
         const testResponse = await fetch(`${SMARTSTORE_API_URL}/token-test`, {
@@ -573,15 +592,30 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            marketAccount: store.id,
-            clientId: store.appId,
-            clientSecret: store.appSecret
+            marketAccount,
+            clientId,
+            clientSecret
           })
         })
 
         const testResult = await testResponse.json()
         if (!testResult.success) {
-          await showAlert(testResult.message || '스마트스토어 연동 테스트에 실패했습니다.')
+          console.warn('스마트스토어 연동 테스트 실패:', testResult)
+          const detailLines = Array.isArray(testResult.details?.invalidInputs)
+            ? testResult.details.invalidInputs
+                .map((item: { name?: string; message?: string } | string) => {
+                  if (!item) return ''
+                  if (typeof item === 'string') return item
+                  return item.name ? `${item.name}: ${item.message || ''}` : item.message || ''
+                })
+                .filter(Boolean)
+                .join('\n')
+            : ''
+          await showAlert(
+            [testResult.message || '스마트스토어 연동 테스트에 실패했습니다.', detailLines]
+              .filter(Boolean)
+              .join('\n')
+          )
           return
         }
       } catch (error) {
@@ -598,12 +632,12 @@ function UserManagementPage({ onNavigate }: UserManagementPageProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           biz_idx: store.biz_idx,
-          store_name: store.storeName,
-          account_id: store.id,
-          store_id: store.storeId,
-          user_pwd: store.password,
-          client_id: store.appId,
-          client_secret_sign: store.appSecret,
+          store_name: storeName,
+          account_id: marketAccount,
+          store_id: storeId,
+          user_pwd: password,
+          client_id: clientId,
+          client_secret_sign: clientSecret,
           use_yn: store.useYn,
           ga_buy_yn: store.ga_buy_yn,
           ga_buy_cnt: store.ga_buy_cnt,

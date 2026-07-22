@@ -41,26 +41,50 @@ function getPlanLabel(plan: string | null): string {
   return plan || '-'
 }
 
-/** 결제상태 → 라벨 + 클래스 */
-function getStatusBadge(status: string): { label: string; className: string } {
-  switch (status) {
+/** 현금결제 여부 판별 */
+function isCashPayment(payment: SubscriptionPayment): boolean {
+  return (
+    payment.card_name === '현금' ||
+    payment.status === '현금결제' ||
+    String(payment.order_id || '').startsWith('CASH_')
+  )
+}
+
+/** 결제상태 → 라벨 + 클래스 (현금결제는 card_name 으로 구분) */
+function getStatusBadge(payment: SubscriptionPayment): { label: string; className: string } {
+  const isCash = isCashPayment(payment)
+
+  switch (payment.status) {
     case 'DONE':
-      return { label: '결제완료', className: 'paid' }
+      return isCash
+        ? { label: '결제완료', className: 'cash-paid' }
+        : { label: '결제완료', className: 'paid' }
     case 'FAILED':
       return { label: '결제실패', className: 'failed' }
     case 'CANCELED':
       return { label: '전액환불', className: 'canceled' }
     case 'PARTIAL_CANCELED':
       return { label: '부분환불', className: 'partial' }
+    case '현금결제':
+      return { label: '결제완료', className: 'cash-paid' }
     default:
-      return { label: status || '-', className: 'unknown' }
+      return { label: payment.status || '-', className: 'unknown' }
   }
 }
 
 const API_REFUND = (seq: number) => `${API_URL}/${seq}/refund`
+const API_CANCEL_CASH = (seq: number) => `${API_URL}/${seq}/cash`
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: '', label: '전체' },
+  { value: 'DONE', label: '결제완료' },
+  { value: 'FAILED', label: '결제실패' },
+  { value: 'CANCELED', label: '전액환불' },
+  { value: 'PARTIAL_CANCELED', label: '부분환불' }
+] as const
 
 function SubscriptionManagementPage() {
-  const { showAlert } = useAlert()
+  const { showAlert, showConfirm } = useAlert()
   const [payments, setPayments] = useState<SubscriptionPayment[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -69,6 +93,7 @@ function SubscriptionManagementPage() {
   const [refundAmountInput, setRefundAmountInput] = useState('')
   const [refundReasonInput, setRefundReasonInput] = useState('')
   const [refunding, setRefunding] = useState(false)
+  const [cancellingSeq, setCancellingSeq] = useState<number | null>(null)
 
   // 검색 입력/필터 상태
   const [userInput, setUserInput] = useState('')
@@ -80,6 +105,8 @@ function SubscriptionManagementPage() {
   const [cohorts, setCohorts] = useState<CohortOption[]>([])
   const [cohortSeq, setCohortSeq] = useState<number | ''>('')
   const [cohortFilter, setCohortFilter] = useState<number | ''>('')
+  const [statusInput, setStatusInput] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -92,7 +119,7 @@ function SubscriptionManagementPage() {
   useEffect(() => {
     loadPayments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userFilter, startDateFilter, endDateFilter, cohortFilter])
+  }, [userFilter, startDateFilter, endDateFilter, cohortFilter, statusFilter])
 
   const loadCohorts = async () => {
     try {
@@ -119,6 +146,7 @@ function SubscriptionManagementPage() {
       if (startDateFilter) params.append('startDate', startDateFilter)
       if (endDateFilter) params.append('endDate', endDateFilter)
       if (cohortFilter) params.append('cohortSeq', String(cohortFilter))
+      if (statusFilter) params.append('status', statusFilter)
       const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL
 
       const response = await fetch(url)
@@ -144,6 +172,7 @@ function SubscriptionManagementPage() {
     setStartDateFilter(startDateInput)
     setEndDateFilter(endDateInput)
     setCohortFilter(cohortSeq)
+    setStatusFilter(statusInput)
     setCurrentPage(1)
   }
 
@@ -156,6 +185,8 @@ function SubscriptionManagementPage() {
     setEndDateFilter('')
     setCohortSeq('')
     setCohortFilter('')
+    setStatusInput('')
+    setStatusFilter('')
     setCurrentPage(1)
   }
 
@@ -174,6 +205,10 @@ function SubscriptionManagementPage() {
     Boolean(payment.payment_key) &&
     (payment.status === 'DONE' || payment.status === 'PARTIAL_CANCELED') &&
     getRefundable(payment) > 0
+
+  // 현금결제 취소 가능 여부
+  const canCancelCash = (payment: SubscriptionPayment) =>
+    isCashPayment(payment) && (payment.status === 'DONE' || payment.status === '현금결제')
 
   // 환불 모달 열기 (기본값: 잔액 전액)
   const openRefundModal = (payment: SubscriptionPayment) => {
@@ -228,6 +263,31 @@ function SubscriptionManagementPage() {
       await showAlert('환불 처리 중 오류가 발생했습니다.')
     } finally {
       setRefunding(false)
+    }
+  }
+
+  const handleCancelCash = async (payment: SubscriptionPayment) => {
+    const userLabel = payment.user_name || payment.user_id
+    const confirmed = await showConfirm(
+      `${userLabel} (${payment.user_id}) 현금결제 ${payment.amount.toLocaleString()}원\n주문번호: ${payment.order_id}\n\n이 결제를 취소하고 삭제하시겠습니까?`
+    )
+    if (!confirmed) return
+
+    try {
+      setCancellingSeq(payment.seq)
+      const response = await fetch(API_CANCEL_CASH(payment.seq), { method: 'DELETE' })
+      const result = await response.json()
+      if (result.success) {
+        await showAlert('현금결제가 취소되었습니다.')
+        loadPayments()
+      } else {
+        await showAlert(result.message || '현금결제 취소에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('현금결제 취소 오류:', error)
+      await showAlert('현금결제 취소 중 오류가 발생했습니다.')
+    } finally {
+      setCancellingSeq(null)
     }
   }
 
@@ -354,6 +414,18 @@ function SubscriptionManagementPage() {
               value={endDateInput}
               onChange={(e) => setEndDateInput(e.target.value)}
             />
+            <label>결제상태:</label>
+            <select
+              className="sub-date-input"
+              value={statusInput}
+              onChange={(e) => setStatusInput(e.target.value)}
+            >
+              {PAYMENT_STATUS_OPTIONS.map((option) => (
+                <option key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <button type="button" className="sub-search-btn" onClick={handleSearch}>
               검색
             </button>
@@ -402,7 +474,7 @@ function SubscriptionManagementPage() {
                 </tr>
               ) : (
                 currentPayments.map((payment, index) => {
-                  const statusBadge = getStatusBadge(payment.status)
+                  const statusBadge = getStatusBadge(payment)
                   return (
                     <tr key={payment.seq}>
                       <td>{indexOfFirstItem + index + 1}</td>
@@ -433,7 +505,16 @@ function SubscriptionManagementPage() {
                         {payment.order_id}
                       </td>
                       <td>
-                        {canRefund(payment) ? (
+                        {canCancelCash(payment) ? (
+                          <button
+                            type="button"
+                            className="sub-cancel-btn"
+                            onClick={() => handleCancelCash(payment)}
+                            disabled={cancellingSeq === payment.seq}
+                          >
+                            {cancellingSeq === payment.seq ? '처리 중...' : '취소'}
+                          </button>
+                        ) : canRefund(payment) ? (
                           <button
                             className="sub-refund-btn"
                             onClick={() => openRefundModal(payment)}

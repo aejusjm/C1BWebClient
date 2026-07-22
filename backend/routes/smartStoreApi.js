@@ -10,7 +10,26 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const SMARTSTORE_API_BASE = 'https://api.commerce.naver.com';
 
-function buildAuthQuery(clientId, clientSecret) {
+function formatInvalidInputs(invalidInputs) {
+  if (!Array.isArray(invalidInputs) || invalidInputs.length === 0) return null;
+  return invalidInputs
+    .map((item) => {
+      if (!item) return null;
+      if (typeof item === 'string') return item;
+      const name = item.name || item.field || item.param || '';
+      const msg = item.message || item.reason || JSON.stringify(item);
+      return name ? `${name}: ${msg}` : msg;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * 네이버 커머스 API 토큰 발급용 전자서명/파라미터 생성
+ * - type=SELF: account_id 포함하면 안 됨
+ * - type=SELLER: account_id(스토어 계정) 필수
+ */
+function buildTokenForm({ clientId, clientSecret, type = 'SELF', accountId = null }) {
   if (
     typeof clientSecret !== 'string' ||
     !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{22,}/.test(clientSecret)
@@ -20,95 +39,129 @@ function buildAuthQuery(clientId, clientSecret) {
     throw err;
   }
 
-  const timestamp = Date.now() - 30000; // C# 코드와 동일: UTC now - 30초
+  const timestamp = Date.now() - 30000; // 시계 오차 대비: now - 30초
   const hashed = bcrypt.hashSync(`${clientId}_${timestamp}`, clientSecret);
   const clientSecretSign = Buffer.from(hashed, 'utf8').toString('base64');
 
-  const query = new URLSearchParams({
+  const form = new URLSearchParams({
     client_id: clientId,
     timestamp: String(timestamp),
     client_secret_sign: clientSecretSign,
     grant_type: 'client_credentials',
-    type: 'SELF'
+    type
   });
 
-  return `?${query.toString()}`;
+  if (type === 'SELLER') {
+    if (!accountId) {
+      const err = new Error('SELLER_ACCOUNT_ID_REQUIRED');
+      err.code = 'SELLER_ACCOUNT_ID_REQUIRED';
+      throw err;
+    }
+    form.set('account_id', accountId);
+  }
+
+  return form;
+}
+
+async function requestSmartStoreToken(form) {
+  // 규격 강화: 파라미터는 query가 아니라 x-www-form-urlencoded body 로 전달해야 함
+  const response = await fetch(`${SMARTSTORE_API_BASE}/external/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form.toString()
+  });
+
+  const raw = await response.text();
+  let parsed = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    parsed = null;
+  }
+
+  return { response, raw, parsed };
 }
 
 // 스마트스토어 토큰 발급 테스트
 router.post('/token-test', async (req, res) => {
   try {
-    const { marketAccount, clientId, clientSecret } = req.body;
+    const marketAccount = String(req.body?.marketAccount || '').trim();
+    const clientId = String(req.body?.clientId || '').trim();
+    const clientSecret = String(req.body?.clientSecret || '').trim();
+    const requestedType = String(req.body?.type || 'SELF').trim().toUpperCase();
+    const authType = requestedType === 'SELLER' ? 'SELLER' : 'SELF';
 
-    if (!marketAccount || !clientId || !clientSecret) {
+    if (!clientId || !clientSecret) {
       return res.status(400).json({
         success: false,
-        message: 'marketAccount, clientId, clientSecret은 필수입니다.'
+        message: 'APP ID, APP 시크릿은 필수입니다.'
+      });
+    }
+    if (authType === 'SELLER' && !marketAccount) {
+      return res.status(400).json({
+        success: false,
+        message: 'SELLER 타입 연동 시 스마트스토어 아이디(account_id)가 필요합니다.'
       });
     }
 
-    const authQuery = buildAuthQuery(clientId, clientSecret);
-    const response = await fetch(`${SMARTSTORE_API_BASE}/external/v1/oauth2/token${authQuery}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+    const form = buildTokenForm({
+      clientId,
+      clientSecret,
+      type: authType,
+      accountId: marketAccount || null
     });
+    const { response, raw, parsed } = await requestSmartStoreToken(form);
 
-    const raw = await response.text();
-    let parsed = null;
-    try {
-      parsed = raw ? JSON.parse(raw) : null;
-    } catch (_) {
-      parsed = null;
-    }
-
-    // C# 로직과 동일: 200 아니면 API 정보 확인 안내
     if (response.status !== 200) {
-      const invalidInputMessage =
-        parsed && Array.isArray(parsed.invalidInputs) && parsed.invalidInputs.length > 0
-          ? parsed.invalidInputs[0].message
-          : null;
-      const apiMessage = (parsed && parsed.message) || invalidInputMessage || null;
+      const invalidInputMessage = formatInvalidInputs(parsed?.invalidInputs);
+      const apiMessage = invalidInputMessage || parsed?.message || null;
 
       return res.status(400).json({
         success: false,
-        message: apiMessage || `[스마트스토어 : ${marketAccount}] API 정보를 다시 확인해주세요.`,
+        message:
+          apiMessage ||
+          `[스마트스토어 : ${marketAccount || clientId}] API 정보를 다시 확인해주세요.`,
         statusCode: response.status,
         details: parsed || raw
       });
     }
 
-    // C# 로직과 동일: message가 있으면 실패 응답 처리
-    if (parsed && parsed.message) {
-      const invalidInputMessage =
-        Array.isArray(parsed.invalidInputs) && parsed.invalidInputs.length > 0
-          ? parsed.invalidInputs[0].message
-          : null;
-
+    if (parsed && parsed.message && !parsed.access_token) {
+      const invalidInputMessage = formatInvalidInputs(parsed.invalidInputs);
       return res.status(400).json({
         success: false,
-        message: invalidInputMessage || parsed.message
+        message: invalidInputMessage || parsed.message,
+        details: parsed
       });
     }
 
     if (!parsed || !parsed.access_token) {
       return res.status(400).json({
         success: false,
-        message: '토큰 발급 응답이 올바르지 않습니다.'
+        message: '토큰 발급 응답이 올바르지 않습니다.',
+        details: parsed || raw
       });
     }
 
     return res.json({
       success: true,
       message: '스마트스토어 연동 테스트 성공',
-      expires_in: parsed.expires_in
+      expires_in: parsed.expires_in,
+      type: authType
     });
   } catch (error) {
     if (error.code === 'INVALID_CLIENT_SECRET_FORMAT') {
       return res.status(400).json({
         success: false,
         message: 'APP 시크릿 형식이 올바르지 않습니다. 스마트스토어에서 발급된 client_secret 값을 입력해주세요.'
+      });
+    }
+    if (error.code === 'SELLER_ACCOUNT_ID_REQUIRED') {
+      return res.status(400).json({
+        success: false,
+        message: 'SELLER 타입 연동 시 스마트스토어 아이디가 필요합니다.'
       });
     }
 
@@ -125,25 +178,21 @@ router.post('/token-test', async (req, res) => {
  * 스마트스토어 토큰 발급
  */
 async function getSmartStoreToken() {
-  const marketAccount = process.env.SMARTSTORE_MARKET_ACCOUNT;
   const clientId = process.env.SMARTSTORE_CLIENT_ID;
   const clientSecret = process.env.SMARTSTORE_CLIENT_SECRET;
 
-  const authQuery = buildAuthQuery(clientId, clientSecret);
-  const response = await fetch(`${SMARTSTORE_API_BASE}/external/v1/oauth2/token${authQuery}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
+  const form = buildTokenForm({
+    clientId,
+    clientSecret,
+    type: 'SELF'
   });
+  const { response, raw, parsed } = await requestSmartStoreToken(form);
 
-  const result = await response.json();
-  
-  if (result.access_token) {
-    return result.access_token;
+  if (parsed?.access_token) {
+    return parsed.access_token;
   }
-  
-  throw new Error(result.error || '토큰 발급 실패');
+
+  throw new Error(parsed?.message || parsed?.error || raw || `토큰 발급 실패 (HTTP ${response.status})`);
 }
 
 /**

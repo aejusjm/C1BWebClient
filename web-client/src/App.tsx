@@ -28,6 +28,7 @@ import SubscriptionSettlementPage from './components/SubscriptionSettlementPage'
 import SignupPaymentPage from './components/SignupPaymentPage'
 import ServerManagementPage from './components/ServerManagementPage'
 import CohortManagementPage from './components/CohortManagementPage'
+import AllProductManagementPage from './components/AllProductManagementPage'
 import DeleteProductManagementPage from './components/DeleteProductManagementPage'
 import BatchLogManagementPage from './components/BatchLogManagementPage'
 import FakePurchaseUserPage from './components/FakePurchaseUserPage'
@@ -148,6 +149,7 @@ function AuthenticatedApp({
             {renderAdminPage('admin-direct-payment', <AdminDirectPaymentPage />)}
             {renderAdminPage('subscription-settlement', <SubscriptionSettlementPage />)}
             {renderAdminPage('notice-management', <NoticeManagementPage />)}
+            {renderAdminPage('all-products', <AllProductManagementPage />)}
             {renderAdminPage('deleted-products', <DeleteProductManagementPage />)}
             {renderAdminPage('detail-page-management', <DetailPageManagement />)}
             {renderAdminPage('banned-words', <NoWordManagementPage />)}

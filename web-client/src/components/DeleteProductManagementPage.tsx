@@ -18,7 +18,11 @@ interface DeleteProduct {
   user_name: string
   gu_seq: number
   del_reason: string
+  market_type: string | null
+  biz_idx: string | null
   del_yn: string
+  suspen_ss: string | null
+  suspen_cp: string | null
   del_confirm: string
   del_type: string
   input_date: string | null
@@ -37,6 +41,9 @@ function getDelTypeBadge(delType: string | null | undefined): { label: string; c
   }
   if (t === '일괄삭제' || t === '전체삭제') {
     return { label: '일괄삭제', className: 'del-type-batch' }
+  }
+  if (t === '연관삭제') {
+    return { label: '연관삭제', className: 'del-type-batch' }
   }
   if (!t) {
     return { label: '-', className: 'del-type-unknown' }
@@ -64,6 +71,12 @@ function DeleteProductManagementPage() {
   
   // 이미지 확대 상태
   const [zoomImage, setZoomImage] = useState<string | null>(null)
+  const [stoppingSaleSeq, setStoppingSaleSeq] = useState<number | null>(null)
+  const [stopSaleProgress, setStopSaleProgress] = useState<{
+    step: string
+    message: string
+    previousResult?: string
+  } | null>(null)
 
   useEffect(() => {
     loadCohorts()
@@ -276,6 +289,63 @@ function DeleteProductManagementPage() {
     }
   }
 
+  // 판매중지 (스마트스토어 → 쿠팡 순차 처리)
+  const handleStopSale = async (product: DeleteProduct) => {
+    const confirmed = await showConfirm(
+      `${product.user_name} 사용자의 스마트스토어/쿠팡 상품을 판매중지 상태로 변경하시겠습니까?`
+    )
+    if (!confirmed) return
+
+    const callStopSale = async (market: 'smartstore' | 'coupang') => {
+      const response = await fetch(`${API_URL}/${product.seq}/stop-sale/${market}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok || !result?.success) {
+        return result?.message || `판매중지 요청 실패 (HTTP ${response.status})`
+      }
+      return null
+    }
+
+    try {
+      setStoppingSaleSeq(product.seq)
+      setStopSaleProgress({
+        step: '1 / 2',
+        message: '스마트스토어 판매중지 처리 중...'
+      })
+
+      const ssError = await callStopSale('smartstore')
+      const ssResult = ssError ? `실패 - ${ssError}` : '판매중지 완료'
+
+      setStopSaleProgress({
+        step: '2 / 2',
+        message: '쿠팡 판매중지 처리 중...',
+        previousResult: `스마트스토어: ${ssResult}`
+      })
+      const cpError = await callStopSale('coupang')
+
+      const lines = [
+        `스마트스토어: ${ssResult}`,
+        `쿠팡: ${cpError ? `실패 - ${cpError}` : '판매중지 완료'}`
+      ]
+      setStopSaleProgress(null)
+      await showAlert(lines.join('\n'))
+    } catch (error) {
+      console.error('판매중지 오류:', error)
+      setStopSaleProgress(null)
+      await showAlert(
+        error instanceof Error ? error.message : '판매중지 처리 중 오류가 발생했습니다.'
+      )
+    } finally {
+      setStoppingSaleSeq(null)
+      setStopSaleProgress(null)
+      await loadProducts()
+    }
+  }
+
   const hasDelDate = (delDate: string | null) => Boolean(delDate)
 
   // 페이징 계산
@@ -394,19 +464,24 @@ function DeleteProductManagementPage() {
                 <th>사용자</th>
                 <th>삭제유형</th>
                 <th>삭제사유</th>
+                <th>소명 마켓</th>
+                <th>스토어 IDX</th>
                 <th>상품이미지</th>
                 <th>상품명</th>
                 <th>삭제여부</th>
+                <th>스스중단</th>
+                <th>쿠팡중단</th>
                 <th>삭제요청일</th>
                 <th>삭제일자</th>
                 <th>전체삭제요청</th>
                 <th>삭제확인</th>
+                <th>판매중지</th>
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="no-data">
+                  <td colSpan={16} className="no-data">
                     {loading ? '로딩 중...' : '삭제 요청된 상품이 없습니다.'}
                   </td>
                 </tr>
@@ -427,6 +502,16 @@ function DeleteProductManagementPage() {
                     </td>
                     <td className="reason-cell" title={product.del_reason}>{product.del_reason}</td>
                     <td>
+                      {product.market_type === 'SS'
+                        ? '스마트스토어'
+                        : product.market_type === 'CP'
+                          ? '쿠팡'
+                          : product.market_type === 'NONE'
+                            ? '없음'
+                            : '-'}
+                    </td>
+                    <td>{product.biz_idx || '-'}</td>
+                    <td>
                       <img 
                         src={product.img_url} 
                         alt={product.good_name}
@@ -444,10 +529,22 @@ function DeleteProductManagementPage() {
                         {product.del_yn === 'Y' ? '삭제완료' : '대기중'}
                       </span>
                     </td>
+                    <td
+                      className={`suspen-cell ${product.suspen_ss === '판매중지' ? 'suspen-ok' : product.suspen_ss ? 'suspen-error' : ''}`}
+                      title={product.suspen_ss || ''}
+                    >
+                      {product.suspen_ss || '-'}
+                    </td>
+                    <td
+                      className={`suspen-cell ${product.suspen_cp === '판매중지' ? 'suspen-ok' : product.suspen_cp ? 'suspen-error' : ''}`}
+                      title={product.suspen_cp || ''}
+                    >
+                      {product.suspen_cp || '-'}
+                    </td>
                     <td>{formatDate(product.input_date)}</td>
                     <td>{formatDate(product.del_date)}</td>
                     <td>
-                      {product.del_type === '일괄삭제' ? (
+                      {product.del_type === '일괄삭제' || product.del_type === '연관삭제' ? (
                         <span style={{ color: '#999' }}>-</span>
                       ) : product.del_type === '즉시삭제' && product.has_child_requests === 1 ? (
                         <button 
@@ -466,7 +563,7 @@ function DeleteProductManagementPage() {
                       )}
                     </td>
                     <td>
-                      {product.del_type === '일괄삭제' ? (
+                      {product.del_type === '일괄삭제' || product.del_type === '연관삭제' ? (
                         <span style={{ color: '#999' }}>-</span>
                       ) : product.del_confirm === 'Y' ? (
                         hasDelDate(product.del_date) ? (
@@ -492,6 +589,15 @@ function DeleteProductManagementPage() {
                           삭제확인
                         </button>
                       )}
+                    </td>
+                    <td>
+                      <button
+                        className="stop-sale-btn"
+                        disabled={stoppingSaleSeq === product.seq}
+                        onClick={() => void handleStopSale(product)}
+                      >
+                        {stoppingSaleSeq === product.seq ? '처리중' : '판매중지'}
+                      </button>
                     </td>
                   </tr>
                   )
@@ -563,6 +669,24 @@ function DeleteProductManagementPage() {
             className="image-zoom-content"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* 판매중지 진행상태 */}
+      {stopSaleProgress && (
+        <div className="stop-sale-progress-overlay" role="status" aria-live="polite">
+          <div className="stop-sale-progress-modal">
+            <div className="stop-sale-progress-spinner" />
+            <strong>상품 판매중지 진행 중</strong>
+            <span className="stop-sale-progress-step">{stopSaleProgress.step}</span>
+            <p>{stopSaleProgress.message}</p>
+            {stopSaleProgress.previousResult && (
+              <div className="stop-sale-progress-result">
+                ✓ {stopSaleProgress.previousResult}
+              </div>
+            )}
+            <small>처리가 완료될 때까지 잠시만 기다려주세요.</small>
+          </div>
         </div>
       )}
     </div>

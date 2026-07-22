@@ -295,6 +295,12 @@
   border: 1px solid #ffb74d;
 }
 
+.sub-status-badge.cash-paid {
+  background: #e0f7fa;
+  color: #006064;
+  border: 1px solid #4dd0e1;
+}
+
 .sub-status-badge.unknown {
   background: #f5f5f5;
   color: #616161;
@@ -336,6 +342,31 @@
 .sub-refund-btn.completed:hover {
   transform: none;
   box-shadow: 0 2px 4px rgba(158, 158, 158, 0.3);
+}
+
+.sub-cancel-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #78909c 0%, #546e7a 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(84, 110, 122, 0.3);
+  white-space: nowrap;
+}
+
+.sub-cancel-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(84, 110, 122, 0.4);
+}
+
+.sub-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* 환불 모달 */
